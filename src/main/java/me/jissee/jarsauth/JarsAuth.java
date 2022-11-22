@@ -60,6 +60,7 @@ public class JarsAuth
             List<String> authFileList = (List<String>) MClientConfig.checkFolders.get();
             String finalString = "clientHash";
             for(String str : authFileList){
+                finalString += str;
                 String gameDir = Minecraft.getInstance().gameDirectory.getAbsolutePath() + "\\";
                 String fpath = gameDir + str + "\\";
                 File dir = new File(fpath);
