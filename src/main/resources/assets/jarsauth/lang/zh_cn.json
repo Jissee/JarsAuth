@@ -1,0 +1,6 @@
+{
+  "text.protected": "此服务端受客户端验证(JarsAuth)的保护",
+  "text.hash.is": "当前客户端哈希签名是：",
+  "text.hash.copied": "。你已经复制了带下划线的代码，将其粘贴至服务端配置以同意此客户端连接。",
+  "text.client.only": "只能在客户端运行此命令"
+}

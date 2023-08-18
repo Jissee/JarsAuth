@@ -1,0 +1,6 @@
+{
+  "text.protected": "This server is protected by JarsAuth.",
+  "text.hash.is": "The current hash signature of this client is ",
+  "text.hash.copied": ". You have copied the underlined code. You can paste it to server config to allow this client.",
+  "text.client.only": "Please run this command only in client."
+}
