@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "package": "me.jissee.jarsauth.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "minVersion": "0.8",
+  "plugin": "me.jissee.jarsauth.mixin.MixinPlugin",
+  "mixins": [
+    "ServerboundPacket"
+  ],
+  "client": [
+    "BootStrap",
+    "ClientboundPacket"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

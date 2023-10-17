@@ -10,8 +10,7 @@ import static me.jissee.jarsauth.JarsAuth.MODID;
 
 public class PacketHandler {
     private static final String PROTOCOL_VERSION = "1";
-    public static int id = 0;
-    public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
+    private static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MODID,"message"),
             () -> PROTOCOL_VERSION,
             PROTOCOL_VERSION::equals,
@@ -26,6 +25,14 @@ public class PacketHandler {
                 AuthPacket::encode,
                 AuthPacket::decode,
                 AuthPacket::handle
+        );
+
+        INSTANCE.registerMessage(
+                i++,
+                BroadcastPacket.class,
+                BroadcastPacket::encode,
+                BroadcastPacket::decode,
+                BroadcastPacket::handle
         );
 
     }

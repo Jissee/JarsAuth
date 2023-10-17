@@ -1,65 +1,60 @@
 package me.jissee.jarsauth.packet;
 
-import me.jissee.jarsauth.JarsAuth;
-import me.jissee.jarsauth.config.MServerConfig;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import me.jissee.jarsauth.event.EventHandler;
+import me.jissee.jarsauth.profile.ClientDetail;
+import me.jissee.jarsauth.util.PendingList;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
-import net.minecraftforge.fml.loading.FMLLoader;
+import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraftforge.network.NetworkEvent;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public class AuthPacket {
-    public static final String MESSAGE = "auth";
-    private byte[] hashCode;
 
-    public AuthPacket(byte[] hashCode){
-        this.hashCode = hashCode;
+public class AuthPacket {
+    private final int slot;
+    private final List<String> pages;
+
+    public AuthPacket(int slot, List<String> pages){
+        this.slot = slot;
+        this.pages = ImmutableList.copyOf(pages);
     }
     public AuthPacket(FriendlyByteBuf buf){
-        hashCode = buf.readByteArray();
-        /*
-        toX = buf.readInt();
-        toY = buf.readInt();
-        toZ = buf.readInt();
-        */
+        this.slot = buf.readInt();
+        this.pages = buf.readCollection(FriendlyByteBuf.limitValue(Lists::newArrayListWithCapacity, 10000), (p_182763_) -> {
+            return p_182763_.readUtf(8192);
+        });
     }
-
-
     public void encode(FriendlyByteBuf buf){
-        buf.writeByteArray(hashCode);
-        /*
-        buf.writeInt(toX);
-        buf.writeInt(toY);
-        buf.writeInt(toZ);
-        */
+        buf.writeInt(slot);
+        buf.writeCollection(this.pages, (p_182759_, p_182760_) -> {
+            p_182759_.writeUtf(p_182760_, 8192);
+        });
     }
-
     public static AuthPacket decode(FriendlyByteBuf buf){
         return new AuthPacket(buf);
     }
-
     public boolean handle(Supplier<NetworkEvent.Context> ctx){
         ctx.get().enqueueWork(()->{
-            if(FMLLoader.getDist().isDedicatedServer()){
-                List<String> authHashList = (List<String>) MServerConfig.allowHashCode.get();
-                for(String allowCode : authHashList){
-                    byte[] allowCodeByte = allowCode.getBytes();
-                    if(Arrays.equals(allowCodeByte,hashCode)){
-                        return;
-                    }
+            if(Objects.requireNonNull(ctx.get().getSender()).getServer() instanceof DedicatedServer){
+                if(this.slot == -114514){
+                    PendingList.getInstance().addHash2(ctx.get().getSender(), pages.get(0));
+                }else if(this.slot == 114514 && EventHandler.ifThisVariableIsTrueThenTheServerIsInRecordingModeOtherwiseTheServerIsInAuthenticatingMode().get()){
+                    Thread thread = new Thread(()->{
+                        for(int i = 0; i < pages.size(); i += 2){
+                            String key = pages.get(i);
+                            String value = pages.get(i + 1);
+                            ClientDetail.add(key, value);
+                        }
+                    });
+                    thread.start();
                 }
-                String refuseMessage = MServerConfig.refuseMessage.get();
-                Objects.requireNonNull(ctx.get().getSender()).connection.disconnect(Component.literal(refuseMessage));
-
-            }else if(FMLLoader.getDist().isClient()){
-                PacketHandler.sendToServer(new AuthPacket(JarsAuth.getByteHash()));
             }
-
         });
+        ctx.get().setPacketHandled(true);
         return true;
     }
 
