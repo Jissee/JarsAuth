@@ -1,3 +1,9 @@
+/*
+ * This file is part of the JarsAuth, licensed under the
+ * GNU General Public License v3.0. <https://www.gnu.org/licenses/>
+ *
+ * Copyright (C) 2023 Jissee and contributors
+ */
 package me.jissee.jarsauth.packet;
 
 import com.google.gson.Gson;
