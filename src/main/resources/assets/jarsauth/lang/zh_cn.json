@@ -1,0 +1,7 @@
+{
+  "text.auth.timeout": "验证超时",
+  "text.reloaded": "配置已经重载",
+  "text.record.off": "记录模式已关闭",
+  "text.record.on": "记录模式已开启",
+  "text.disconn.relative": "可疑的相对路径检查"
+}

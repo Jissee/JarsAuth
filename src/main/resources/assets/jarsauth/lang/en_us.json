@@ -1,0 +1,7 @@
+{
+  "text.auth.timeout": "Auth Timeout",
+  "text.reloaded": "Config reloaded",
+  "text.record.off": "Record mode is off",
+  "text.record.on": "Record mode is on",
+  "text.disconn.relative": "Suspicious relative path check detected."
+}
