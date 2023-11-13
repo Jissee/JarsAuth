@@ -68,6 +68,9 @@ public class PendingList {
                 synchronized (r){
                     if(r.player.getId() == player.getId()){
                         r.got1 = hash;
+                        if(r.player.isRemoved()){
+                            r.player = player;
+                        }
                         break;
                     }
                 }
@@ -82,6 +85,9 @@ public class PendingList {
                 synchronized (r){
                     if(r.player.getId() == player.getId()){
                         r.got2 = hash;
+                        if(r.player.isRemoved()){
+                            r.player = player;
+                        }
                         break;
                     }
                 }
@@ -328,7 +334,7 @@ public class PendingList {
     }
 
     private static class Record {
-        private final ServerPlayerEntity player;
+        private ServerPlayerEntity player;
         private volatile long time;
         private volatile String expected1;
         private volatile String got1;
@@ -348,7 +354,7 @@ public class PendingList {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             Record record = (Record) o;
-            return Objects.equals(player, record.player);
+            return Objects.equals(player.getId(), record.player.getId());
         }
 
         @Override
