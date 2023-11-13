@@ -62,7 +62,7 @@ public class PendingList {
             for(int i = 0; i < records.size(); i++){
                 Record r = records.get(i);
                 synchronized (r){
-                    if(r.player == player){
+                    if(r.player.getId() == player.getId()){
                         r.got1 = hash;
                         break;
                     }
@@ -76,7 +76,7 @@ public class PendingList {
             for(int i = 0; i < records.size(); i++){
                 Record r = records.get(i);
                 synchronized (r){
-                    if(r.player == player){
+                    if(r.player.getId() == player.getId()){
                         r.got2 = hash;
                         break;
                     }
