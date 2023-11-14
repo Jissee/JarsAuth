@@ -47,14 +47,18 @@ public class PendingList {
 
     public void add(ServerPlayerEntity player) {
         synchronized (LOCK){
+            boolean flag = true;
             if(EventHandler.getServerSaveDir() != null){
                 Record r = new Record(player, 0, NONE, NONE, NONE, NONE);
                 for(Record r1 : records){
                     if(r.equals(r1)){
+                        flag = false;
                         break;
                     }
                 }
-                records.add(r);
+                if(flag){
+                    records.add(r);
+                }
             }
         }
     }
