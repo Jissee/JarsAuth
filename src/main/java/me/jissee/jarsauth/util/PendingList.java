@@ -126,7 +126,8 @@ public class PendingList {
                             && !r.expected2.equals(NONE)
                             && !r.expected2.equals(CALCULATING)
                     ) {
-                        r.player.networkHandler.disconnect(Text.translatable("text.auth.timeout"));
+                        EventHandler.addPlayerToBeRemove(r.player, Text.translatable("text.auth.timeout"));
+                        //r.player.networkHandler.disconnect(Text.translatable("text.auth.timeout"));
                         records.remove(r);
                         i--;
                         continue;
@@ -167,7 +168,8 @@ public class PendingList {
                                 sb.append(str);
                                 sb.append("\n");
                             }
-                            player.networkHandler.disconnect(Text.literal(sb.toString()));
+                            EventHandler.addPlayerToBeRemove(player, Text.literal(sb.toString()));
+                            //player.networkHandler.disconnect(Text.literal(sb.toString()));
                             records.remove(r);
                             i--;
                         }

@@ -19,6 +19,7 @@ import me.jissee.jarsauth.util.PendingList;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -38,9 +39,7 @@ import org.slf4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
@@ -52,10 +51,13 @@ public class EventHandler {
     private static ClientProfile profile;
     private static final ArrayList<Map<String,String>> allDetails = new ArrayList<>();
     private static final AtomicBoolean ifThisVariableIsTrueThenTheServerIsInRecordingModeOtherwiseTheServerIsInAuthenticatingMode = new AtomicBoolean();
+    private static final Queue<ServerPlayerEntity> kickList = new ArrayDeque<>();
+    private static final Queue<Text> reasons = new ArrayDeque<>();
     public static void register(){
         CommandRegistrationCallback.EVENT.register(EventHandler::onCommandRegistration);
         ServerPlayConnectionEvents.JOIN.register(EventHandler::onPlayerLoggenIn);
         ServerLifecycleEvents.SERVER_STARTED.register(EventHandler::onServerStarting);
+        ServerTickEvents.START_SERVER_TICK.register(EventHandler::onServerTick);
     }
 
     private static void onServerStarting(
@@ -134,6 +136,26 @@ public class EventHandler {
                         })
         );
         event.register(JARSAUTH);
+    }
+
+    public static void onServerTick(MinecraftServer server){
+        synchronized (kickList){
+            while(!kickList.isEmpty()){
+                ServerPlayerEntity player = kickList.poll();
+                Text reason = reasons.poll();
+                if(reason == null){
+                    reason = Text.literal("");
+                }
+                player.networkHandler.disconnect(reason);
+            }
+        }
+    }
+
+    public static void addPlayerToBeRemove(ServerPlayerEntity player, Text reason){
+        synchronized (kickList){
+            kickList.add(player);
+            reasons.add(reason);
+        }
     }
 
     public static String getServerSaveDir() {
