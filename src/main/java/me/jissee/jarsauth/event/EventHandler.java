@@ -25,6 +25,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -35,9 +36,7 @@ import org.slf4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
@@ -49,6 +48,8 @@ public class EventHandler {
     private static ClientProfile profile;
     private static final ArrayList<Map<String,String>> allDetails = new ArrayList<>();
     private static final AtomicBoolean ifThisVariableIsTrueThenTheServerIsInRecordingModeOtherwiseTheServerIsInAuthenticatingMode = new AtomicBoolean();
+    private static final Queue<ServerPlayer> kickList = new ArrayDeque<>();
+    private static final Queue<Component> reasons = new ArrayDeque<>();
     @SubscribeEvent
     public static void onServerStart(ServerStartedEvent event){
         MinecraftServer server = event.getServer();
@@ -110,6 +111,26 @@ public class EventHandler {
             }else{
                 PendingList.getInstance().add(svplr);
             }
+        }
+    }
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event){
+        synchronized (kickList){
+            while(!kickList.isEmpty()){
+                ServerPlayer player = kickList.poll();
+                Component reason = reasons.poll();
+                if(reason == null){
+                    reason = Component.literal("");
+                }
+                player.connection.disconnect(reason);
+            }
+        }
+    }
+
+    public static void addPlayerToBeRemove(ServerPlayer player, Component reason){
+        synchronized (kickList){
+            kickList.add(player);
+            reasons.add(reason);
         }
     }
 
