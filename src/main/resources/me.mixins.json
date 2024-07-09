@@ -1,0 +1,15 @@
+{
+	"required": true,
+	"package": "me.jissee.jarsauth.mixin",
+	"compatibilityLevel": "JAVA_17",
+	"mixins": [
+		"ServerboundPacket"
+	],
+	"client": [
+		"BootStrap",
+		"ClientboundPacket"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
