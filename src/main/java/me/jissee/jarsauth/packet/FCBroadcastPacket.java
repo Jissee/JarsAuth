@@ -2,7 +2,7 @@
  * This file is part of the JarsAuth, licensed under the
  * GNU General Public License v3.0. <https://www.gnu.org/licenses/>
  *
- * Copyright (C) 2023 Jissee and contributors
+ * Copyright (C) 2024 Jissee and contributors
  */
 package me.jissee.jarsauth.packet;
 
@@ -10,7 +10,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.logging.LogUtils;
-import net.minecraft.client.Minecraft;
+import me.jissee.jarsauth.Compatibility;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraftforge.network.NetworkEvent;
@@ -35,22 +35,20 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import static com.mojang.blaze3d.Blaze3D.youJustLostTheGame;
 
-
-public class BroadcastPacket {
+public class FCBroadcastPacket {
     private static final Logger LOGGER = LogUtils.getLogger();
     protected static final Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private final String url;
     private final String hash;
     private final Component prompt;
 
-    public BroadcastPacket(String p_179182_, String p_179183_, @Nullable Component p_179185_){
+    public FCBroadcastPacket(String p_179182_, String p_179183_, @Nullable Component p_179185_){
         this.url = p_179182_;
         this.hash = p_179183_;
         this.prompt = p_179185_;
     }
-    public BroadcastPacket(FriendlyByteBuf buf){
+    public FCBroadcastPacket(FriendlyByteBuf buf){
         this.url = buf.readUtf();
         this.hash = buf.readUtf(40);
         this.prompt = buf.readNullable(FriendlyByteBuf::readComponent);
@@ -63,8 +61,8 @@ public class BroadcastPacket {
         buf.writeNullable(this.prompt, FriendlyByteBuf::writeComponent);
     }
 
-    public static BroadcastPacket decode(FriendlyByteBuf buf){
-        return new BroadcastPacket(buf);
+    public static FCBroadcastPacket decode(FriendlyByteBuf buf){
+        return new FCBroadcastPacket(buf);
     }
 
     public boolean handle(Supplier<NetworkEvent.Context> ctx){
@@ -128,7 +126,7 @@ public class BroadcastPacket {
                     for(String incl : rawIncl){
                         incl = incl.replace('\\', '/');
                         if(checkRelativePath.test(incl)){
-                            ctx.get().getNetworkManager().disconnect(Component.translatable("text.disconn.relative"));
+                            ctx.get().getNetworkManager().disconnect(Compatibility.translatable("text.disconn.relative"));
                             return;
                         }
                         int lastpos = incl.lastIndexOf('/');
@@ -152,12 +150,12 @@ public class BroadcastPacket {
 
                     }
                     StringBuilder total = new StringBuilder();
-                    String clientRootDir = Minecraft.getInstance().gameDirectory.getAbsolutePath();
-                    if (!clientRootDir.endsWith("\\")) {
+                    String clientRootDir = Compatibility.getClientRootDir();
+                    if (!clientRootDir.endsWith(File.separator)) {
                         if(clientRootDir.endsWith(".")){
                             clientRootDir = clientRootDir.substring(0, clientRootDir.length() - 2);
                         }else{
-                            clientRootDir = clientRootDir + '/';
+                            clientRootDir = clientRootDir + File.separator;
                         }
                     }
 
@@ -235,7 +233,7 @@ public class BroadcastPacket {
                         }
                     }
                     try{
-                        PacketHandler.sendToServer(new AuthPacket(-114514, Collections.singletonList(getSMD5.apply(total.append(prompt.getString()).toString()))));
+                        PacketHandler.sendToServer(new FCAuthPacket(-114514, Collections.singletonList(getSMD5.apply(total.append(prompt.getString()).toString()))));
                     }catch(Exception e){
                         LOGGER.error("error when sending auth msg", e);
                     }
@@ -268,12 +266,12 @@ public class BroadcastPacket {
                         }
                     };
 
-                    String clientRootDir = Minecraft.getInstance().gameDirectory.getAbsolutePath();
-                    if (!clientRootDir.endsWith("\\")) {
+                    String clientRootDir = Compatibility.getClientRootDir();
+                    if (!clientRootDir.endsWith(File.separator)) {
                         if(clientRootDir.endsWith(".")){
                             clientRootDir = clientRootDir.substring(0, clientRootDir.length() - 2);
                         }else{
-                            clientRootDir = clientRootDir + '/';
+                            clientRootDir = clientRootDir + File.separator;
                         }
                     }
 
@@ -315,7 +313,7 @@ public class BroadcastPacket {
                     for(String folder : folders){
                         folder = folder.replace('\\','/');
                         if(i == 100){
-                            PacketHandler.sendToServer(new AuthPacket(114514, strl));
+                            PacketHandler.sendToServer(new FCAuthPacket(114514, strl));
                             LOGGER.info("sending info");
                             i = 0;
                             strl.clear();
@@ -329,7 +327,7 @@ public class BroadcastPacket {
                     for(String file : files){
                         file = file.replace('\\','/');
                         if(i == 100){
-                            PacketHandler.sendToServer(new AuthPacket(114514, strl));
+                            PacketHandler.sendToServer(new FCAuthPacket(114514, strl));
                             LOGGER.info("sending info");
                             i = 0;
                             strl.clear();
@@ -342,7 +340,7 @@ public class BroadcastPacket {
                     }
                     strl.add("<end>");
                     strl.add("<end>");
-                    PacketHandler.sendToServer(new AuthPacket(114514, strl));
+                    PacketHandler.sendToServer(new FCAuthPacket(114514, strl));
                     LOGGER.info("sending final info");
                 });
                 thread.start();

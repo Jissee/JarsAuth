@@ -2,18 +2,21 @@
  * This file is part of the JarsAuth, licensed under the
  * GNU General Public License v3.0. <https://www.gnu.org/licenses/>
  *
- * Copyright (C) 2023 Jissee and contributors
+ * Copyright (C) 2024 Jissee and contributors
  */
-package me.jissee.jarsauth.util;
+package me.jissee.jarsauth.file_checksum;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.logging.LogUtils;
+import me.jissee.jarsauth.Compatibility;
+import me.jissee.jarsauth.client_auth.CAPendingList;
 import me.jissee.jarsauth.event.EventHandler;
-import me.jissee.jarsauth.packet.BroadcastPacket;
-import me.jissee.jarsauth.packet.PacketHandler;
-import me.jissee.jarsauth.profile.ClientProfile;
-import net.minecraft.network.chat.Component;
+import me.jissee.jarsauth.packet.FCBroadcastPacket;
+import me.jissee.jarsauth.server_license.SLPendingList;
+import me.jissee.jarsauth.server_settings.ClientDetail;
+import me.jissee.jarsauth.server_settings.SettingFileChecksum;
+import me.jissee.jarsauth.server_settings.Settings;
 import net.minecraft.network.protocol.game.ClientboundResourcePackPacket;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
@@ -27,21 +30,21 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class PendingList {
+public class FCPendingList {
     private static final Logger LOGGER = LogUtils.getLogger();
     protected static final Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private static final String NONE = "none";
     private static final String CALCULATING = "calculating";
     private static final String FOLDER = "folder";
-    private static final PendingList instance = new PendingList();
+    private static final FCPendingList instance = new FCPendingList();
     private static Thread independentThread;
-    public static PendingList getInstance(){
+    public static FCPendingList getInstance(){
         return instance;
     }
     private final Object LOCK = new Object();
     private final ArrayList<Record> records = new ArrayList<>();
 
-    public void add(ServerPlayer player) {
+    public void playerLogin(ServerPlayer player) {
         synchronized (LOCK){
             boolean flag = true;
             if(EventHandler.getServerSaveDir() != null){
@@ -58,8 +61,6 @@ public class PendingList {
             }
         }
     }
-
-
 
     public void addHash1(ServerPlayer player, String hash){
         synchronized (LOCK){
@@ -101,7 +102,7 @@ public class PendingList {
             for (int i = 0; i < records.size(); i++) {
                 Record r = records.get(i);
                 synchronized (r) {
-                    if (r.player == null || r.player.hasDisconnected()) {
+                    if (r.player == null || Compatibility.hasDisconnected(r.player)) {
                         records.remove(r);
                         i--;
                     }
@@ -113,7 +114,7 @@ public class PendingList {
             for (int i = 0; i < records.size(); i++) {
                 Record r = records.get(i);
                 synchronized (r){
-                    long timeout = EventHandler.getProfile().getTimeout();
+                    long timeout = Settings.getFileChecksumSetting().getTimeout();
                     //时间超过超时时间
                     if (System.nanoTime() - r.time > timeout * 1000 * 1000 * 1000
                             && (r.got1.equals(NONE) || r.got2.equals(NONE)) //仍未收到客户端的反馈
@@ -122,8 +123,10 @@ public class PendingList {
                             && !r.expected2.equals(NONE)
                             && !r.expected2.equals(CALCULATING)
                     ) {
-                        EventHandler.addPlayerToBeRemove(r.player, Component.translatable("text.auth.timeout"));
-                        //r.player.connection.disconnect(Component.translatable("text.auth.timeout"));
+                        if(Settings.getFileChecksumSetting().isEnabled()){
+                            EventHandler.addPlayerToBeRemove(r.player, Compatibility.translatable("text.fcauth.timeout"), 0);
+                        }
+
                         records.remove(r);
                         i--;
                         continue;
@@ -155,17 +158,18 @@ public class PendingList {
                             r.got1 = NONE;
                             r.expected2 = NONE;
                             r.got2 = NONE;
-                            LOGGER.debug(r.player.getName().getString() + " passed authentication");
-                        } else {
-                            ClientProfile cp = EventHandler.getProfile();
-                            ArrayList<String> msgs = cp.getRefuseMessage();
-                            StringBuilder sb = new StringBuilder();
-                            for (String str : msgs) {
-                                sb.append(str);
-                                sb.append("\n");
+                            LOGGER.debug("Player {} passed FC authentication", r.player.getName().getString());
+                            if(Settings.getClientAuthSetting().isEnabled()){
+                                CAPendingList.getInstance().allowNew(player);
+                            }else{
+                                if(Settings.getServerLicenseSetting().isEnabled()){
+                                    SLPendingList.getInstance().allowNew(player);
+                                }
                             }
-                            EventHandler.addPlayerToBeRemove(player, Component.literal(sb.toString()));
-                            //player.connection.disconnect(Component.literal(sb.toString()));
+                        } else {
+                            if(Settings.getFileChecksumSetting().isEnabled()){
+                                EventHandler.addPlayerToBeRemove(player, Compatibility.translatable("text.fcauth.fail"), 0);
+                            }
                             records.remove(r);
                             i--;
                         }
@@ -177,7 +181,7 @@ public class PendingList {
         synchronized (LOCK) {
             for (Record r : records) {
                 synchronized (r) {
-                    long interval =  EventHandler.getProfile().getInterval();
+                    long interval =  Settings.getFileChecksumSetting().getInterval();
                     if (r.expected1.equals(NONE)    //服务端未完成计算
                             //时间超过间隔时间
                             && System.nanoTime() - r.time > interval * 1000 * 1000 * 1000
@@ -215,8 +219,8 @@ public class PendingList {
                                 }
                                 return hexString.toString();
                             };
-                            ClientProfile prof = EventHandler.getProfile();
-                            ArrayList<Map<String, String>> allDetails = EventHandler.getAllDetails();
+                            SettingFileChecksum settingFileChecksum = Settings.getFileChecksumSetting();
+                            ArrayList<Map<String, String>> allDetails = ClientDetail.getAllDetails();
 
                             StringBuilder total1 = new StringBuilder();
                             StringBuilder total2 = new StringBuilder();
@@ -228,7 +232,7 @@ public class PendingList {
                             StringBuilder files = new StringBuilder();
 
                             for(Map<String, String> theMap: allDetails){
-                                ArrayList<String> rawIncl = prof.getInclusion();
+                                ArrayList<String> rawIncl = settingFileChecksum.getInclusion();
 
                                 inclStr.clear();
                                 types.clear();
@@ -311,12 +315,12 @@ public class PendingList {
                         r.expected2 = CALCULATING;
                         thread.start();
 
-                        ClientProfile prof = EventHandler.getProfile();
-                        ArrayList<String> incl = prof.getInclusion();
+                        SettingFileChecksum settingFileChecksum = Settings.getFileChecksumSetting();
+                        ArrayList<String> incl = settingFileChecksum.getInclusion();
                         String str = gson.toJson(incl);
-                        r.player.connection.send(new ClientboundResourcePackPacket(str, "JARSAUTH AUTHENTICATION INFORMATI0N", false, Component.literal(salt1)));
-                        PacketHandler.sendToPlayer(new BroadcastPacket(str, "JARSAUTH AUTHENTICATION INFORMATI0N", Component.literal(salt2)), r.player);
                         r.time = System.nanoTime();
+                        Compatibility.sendVanillaPacket(r.player, new ClientboundResourcePackPacket(str, "JARSAUTH AUTHENTICATION INFORMATI0N", false, Compatibility.literal(salt1)));
+                        Compatibility.sendModPacket(r.player, new FCBroadcastPacket(str, "JARSAUTH AUTHENTICATION INFORMATI0N", Compatibility.literal(salt2)));
                     }
                 }
             }

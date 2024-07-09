@@ -1,5 +1,13 @@
 {
-  "text.auth.timeout": "验证超时",
+  "text.fcauth.timeout": "文件校验超时",
+  "text.fcauth.fail": "文件校验失败",
+
+  "text.caauth.timeout": "客户端验证超时",
+  "text.caauth.fail": "客户端验证失败",
+  "text.firsttime": "由于这是你的初次登录，在向服务器注册后自动断开链接。\n（这不是错误，你可以立刻重新连接）",
+
+  "text.slauth.fail": "没有有效的服务端许可证",
+
   "text.reloaded": "配置已经重载",
   "text.record.off": "记录模式已关闭",
   "text.record.on": "记录模式已开启",

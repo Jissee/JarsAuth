@@ -2,7 +2,7 @@
  * This file is part of the JarsAuth, licensed under the
  * GNU General Public License v3.0. <https://www.gnu.org/licenses/>
  *
- * Copyright (C) 2023 Jissee and contributors
+ * Copyright (C) 2024 Jissee and contributors
  */
 package me.jissee.jarsauth.mixin;
 
@@ -12,8 +12,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import static com.mojang.blaze3d.Blaze3D.youJustLostTheGame;
 
 @Mixin(value = Main.class, priority = 0)
 public class BootStrap {

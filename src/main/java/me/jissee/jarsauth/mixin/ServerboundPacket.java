@@ -2,12 +2,11 @@
  * This file is part of the JarsAuth, licensed under the
  * GNU General Public License v3.0. <https://www.gnu.org/licenses/>
  *
- * Copyright (C) 2023 Jissee and contributors
+ * Copyright (C) 2024 Jissee and contributors
  */
 package me.jissee.jarsauth.mixin;
 
-import com.mojang.logging.LogUtils;
-import me.jissee.jarsauth.util.PendingList;
+import me.jissee.jarsauth.file_checksum.FCPendingList;
 import net.minecraft.network.protocol.game.ServerGamePacketListener;
 import net.minecraft.network.protocol.game.ServerboundEditBookPacket;
 import net.minecraft.server.MinecraftServer;
@@ -34,7 +33,7 @@ public class ServerboundPacket {
         MinecraftServer server = er.player.getServer();
         if(server instanceof DedicatedServer){
             if(this.slot == -114514){
-                PendingList.getInstance().addHash1(er.player, pages.get(0));
+                FCPendingList.getInstance().addHash1(er.player, pages.get(0));
                 ci.cancel();
             }
         }

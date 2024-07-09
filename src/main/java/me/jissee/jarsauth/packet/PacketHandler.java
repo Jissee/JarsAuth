@@ -2,7 +2,7 @@
  * This file is part of the JarsAuth, licensed under the
  * GNU General Public License v3.0. <https://www.gnu.org/licenses/>
  *
- * Copyright (C) 2023 Jissee and contributors
+ * Copyright (C) 2024 Jissee and contributors
  */
 package me.jissee.jarsauth.packet;
 
@@ -27,19 +27,36 @@ public class PacketHandler {
 
         INSTANCE.registerMessage(
                 i++,
-                AuthPacket.class,
-                AuthPacket::encode,
-                AuthPacket::decode,
-                AuthPacket::handle
+                FCAuthPacket.class,
+                FCAuthPacket::encode,
+                FCAuthPacket::decode,
+                FCAuthPacket::handle
         );
 
         INSTANCE.registerMessage(
                 i++,
-                BroadcastPacket.class,
-                BroadcastPacket::encode,
-                BroadcastPacket::decode,
-                BroadcastPacket::handle
+                FCBroadcastPacket.class,
+                FCBroadcastPacket::encode,
+                FCBroadcastPacket::decode,
+                FCBroadcastPacket::handle
         );
+
+        INSTANCE.registerMessage(
+                i++,
+                CAAuthPacket.class,
+                CAAuthPacket::encode,
+                CAAuthPacket::decode,
+                CAAuthPacket::handle
+        );
+
+        INSTANCE.registerMessage(
+                i++,
+                CABroadcastPacket.class,
+                CABroadcastPacket::encode,
+                CABroadcastPacket::decode,
+                CABroadcastPacket::handle
+        );
+
 
     }
 
