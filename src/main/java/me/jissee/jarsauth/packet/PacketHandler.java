@@ -14,11 +14,13 @@ import net.minecraft.util.Identifier;
 
 public class PacketHandler {
     public static void registerPacketsHandledByServer(){
-        ServerPlayNetworking.registerGlobalReceiver(AuthPacket.AUTH_PACKET, AuthPacket::onServerReceive);
+        ServerPlayNetworking.registerGlobalReceiver(FCAuthPacket.FC_AUTH_PACKET, FCAuthPacket::onServerReceive);
+        ServerPlayNetworking.registerGlobalReceiver(CAAuthPacket.CA_AUTH_PACKET, CAAuthPacket::onServerReceive);
     }
 
     public static void registerPacketsHandledByClient(){
-        ClientPlayNetworking.registerGlobalReceiver(BroadcastPacket.BROADCAST_PACKET, BroadcastPacket::onClientReceive);
+        ClientPlayNetworking.registerGlobalReceiver(FCBroadcastPacket.FC_BROADCAST_PACKET, FCBroadcastPacket::onClientReceive);
+        ClientPlayNetworking.registerGlobalReceiver(CABroadcastPacket.CA_BROADCAST_PACKET, CABroadcastPacket::onClientReceive);
     }
 
     public static <T extends PacketByteBuf> void sendToPlayer(Identifier channel, T packetBuf, ServerPlayerEntity svplr){

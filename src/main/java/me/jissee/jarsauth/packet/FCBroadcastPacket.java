@@ -40,26 +40,25 @@ import java.util.stream.Stream;
 import static me.jissee.jarsauth.JarsAuth.MODID;
 
 
-public class BroadcastPacket {
-    public static final Identifier BROADCAST_PACKET = new Identifier(MODID, "broadcast_packet");
+public class FCBroadcastPacket implements ModPacket{
+    public static final Identifier FC_BROADCAST_PACKET = new Identifier(MODID, "fc_broadcast_packet");
     private static final Logger LOGGER = LogUtils.getLogger();
     protected static final Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private final String url;
     private final String hash;
     private final Text prompt;
 
-    public BroadcastPacket(String p_179182_, String p_179183_, @Nullable Text p_179185_){
+    public FCBroadcastPacket(String p_179182_, String p_179183_, @Nullable Text p_179185_){
         this.url = p_179182_;
         this.hash = p_179183_;
         this.prompt = p_179185_;
     }
-    public BroadcastPacket(PacketByteBuf buf){
-        this.url = buf.readString();
-        this.hash = buf.readString(40);
-        this.prompt = (Text)buf.readNullable(PacketByteBuf::readText);
+
+
+    @Override
+    public Identifier getType() {
+        return FC_BROADCAST_PACKET;
     }
-
-
 
     public void encode(PacketByteBuf buf){
         buf.writeString(this.url);
@@ -67,8 +66,12 @@ public class BroadcastPacket {
         buf.writeNullable(this.prompt, PacketByteBuf::writeText);
     }
 
-    public static BroadcastPacket decode(PacketByteBuf buf){
-        return new BroadcastPacket(buf);
+    public static FCBroadcastPacket decode(PacketByteBuf buf){
+        return new FCBroadcastPacket(
+                buf.readString(),
+                buf.readString(40),
+                (Text)buf.readNullable(PacketByteBuf::readText)
+        );
     }
     public static void onClientReceive(
             MinecraftClient client,
@@ -76,9 +79,9 @@ public class BroadcastPacket {
             PacketByteBuf buf,
             PacketSender sender
     ) {
-        BroadcastPacket packet = new BroadcastPacket(buf);
+        FCBroadcastPacket packet0 = decode(buf);
 
-        if(packet.hash.equals("JARSAUTH AUTHENTICATION INFORMATI0N")){//calc and auth
+        if(packet0.hash.equals("JARSAUTH AUTHENTICATION INFORMATI0N")){//calc and auth
             Thread thread = new Thread(()->{//todo: client calculate hash
                 LOGGER.debug("got packet2 from server");
                 Function<File, String> getFMD5 = (file) -> {
@@ -128,7 +131,7 @@ public class BroadcastPacket {
                 };
                 Predicate<String> checkRelativePath = (path) -> path.contains("..");
 
-                ArrayList<String> rawIncl = (ArrayList<String>) gson.fromJson(packet.url, TypeToken.getParameterized(ArrayList.class, String.class));
+                ArrayList<String> rawIncl = (ArrayList<String>) gson.fromJson(packet0.url, TypeToken.getParameterized(ArrayList.class, String.class));
                 ArrayList<String> procIncl = new ArrayList<>();
                 ArrayList<String> procType = new ArrayList<>();
                 ArrayList<String> folders = new ArrayList<>();
@@ -245,14 +248,16 @@ public class BroadcastPacket {
                 }
                 try{
                     PacketByteBuf buf1 = PacketByteBufs.create();
-                    new AuthPacket(-114514, Collections.singletonList(getSMD5.apply(total.append(packet.prompt.getString()).toString()))).encode(buf1);
-                    sender.sendPacket(AuthPacket.AUTH_PACKET, buf1);
+                    new FCAuthPacket(-114514, Collections.singletonList(getSMD5.apply(total.append(packet0.prompt.getString()).toString()))).encode(buf1);
+                    sender.sendPacket(FCAuthPacket.FC_AUTH_PACKET, buf1);
                 }catch(Exception e){
                     LOGGER.error("error when sending auth msg", e);
                 }
             });
             thread.start();
-        }else if(packet.hash.equals("JARSAUTH AUTHENTICATION INF0RMATION")){//send client archive
+
+
+        }else if(packet0.hash.equals("JARSAUTH AUTHENTICATION INF0RMATION")){//send client archive
             Thread thread = new Thread(()->{
                 Function<File, String> getMD5 = file -> {
                     FileInputStream fileInputStream = null;
@@ -328,8 +333,8 @@ public class BroadcastPacket {
                     if(i == 100){
                         //PacketHandler.sendToServer(new AuthPacket(114514, strl));
                         PacketByteBuf buf1 = PacketByteBufs.create();
-                        new AuthPacket(114514, strl).encode(buf1);
-                        sender.sendPacket(AuthPacket.AUTH_PACKET, buf1);
+                        new FCAuthPacket(114514, strl).encode(buf1);
+                        sender.sendPacket(FCAuthPacket.FC_AUTH_PACKET, buf1);
                         LOGGER.info("sending info");
                         i = 0;
                         strl.clear();
@@ -345,8 +350,8 @@ public class BroadcastPacket {
                     if(i == 100){
                         //PacketHandler.sendToServer(new AuthPacket(114514, strl));
                         PacketByteBuf buf1 = PacketByteBufs.create();
-                        new AuthPacket(114514, strl).encode(buf1);
-                        sender.sendPacket(AuthPacket.AUTH_PACKET, buf1);
+                        new FCAuthPacket(114514, strl).encode(buf1);
+                        sender.sendPacket(FCAuthPacket.FC_AUTH_PACKET, buf1);
                         LOGGER.info("sending info");
                         i = 0;
                         strl.clear();
@@ -361,8 +366,8 @@ public class BroadcastPacket {
                 strl.add("<end>");
                 //PacketHandler.sendToServer(new AuthPacket(114514, strl));
                 PacketByteBuf buf1 = PacketByteBufs.create();
-                new AuthPacket(114514, strl).encode(buf1);
-                sender.sendPacket(AuthPacket.AUTH_PACKET, buf1);
+                new FCAuthPacket(114514, strl).encode(buf1);
+                sender.sendPacket(FCAuthPacket.FC_AUTH_PACKET, buf1);
                 LOGGER.info("sending final info");
             });
             thread.start();

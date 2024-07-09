@@ -59,6 +59,11 @@ jar {
 	//from("LICENSE") {
 	//	rename { "${it}_${project.base.archivesName.get()}"}
 	//}
+	manifest {
+		attributes([
+				"Main-Class": "me.jissee.jarsauth.server_license.gui.JarsAuth"
+		])
+	}
 }
 
 // configure the maven publication

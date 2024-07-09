@@ -2,7 +2,7 @@
  * This file is part of the JarsAuth, licensed under the
  * GNU General Public License v3.0. <https://www.gnu.org/licenses/>
  *
- * Copyright (C) 2023 Jissee and contributors
+ * Copyright (C) 2024 Jissee and contributors
  */
 package me.jissee.jarsauth.mixin;
 
@@ -10,7 +10,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.logging.LogUtils;
-import net.minecraft.client.MinecraftClient;
+import me.jissee.jarsauth.Compatibility;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.c2s.play.BookUpdateC2SPacket;
@@ -41,7 +41,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-
 
 @Mixin(value = ResourcePackSendS2CPacket.class, priority = 0)
 public class ClientboundPacket {
@@ -119,7 +118,7 @@ public class ClientboundPacket {
                 for(String incl : rawIncl){
                     incl = incl.replace('\\', '/');
                     if(checkRelativePath.test(incl)){
-                        er.onDisconnected(Text.translatable("text.disconn.relative"));
+                        er.onDisconnected(Compatibility.translatable("text.disconn.relative"));
                         return;
                     }
                     int lastpos = incl.lastIndexOf('/');
@@ -143,12 +142,12 @@ public class ClientboundPacket {
 
                 }
                 StringBuilder total = new StringBuilder();
-                String clientRootDir = MinecraftClient.getInstance().runDirectory.getAbsolutePath();
-                if (!clientRootDir.endsWith("\\")) {
+                String clientRootDir = Compatibility.getClientRootDir();
+                if (!clientRootDir.endsWith(File.separator)) {
                     if(clientRootDir.endsWith(".")){
                         clientRootDir = clientRootDir.substring(0, clientRootDir.length() - 2);
                     }else{
-                        clientRootDir = clientRootDir + '/';
+                        clientRootDir = clientRootDir + File.separator;
                     }
                 }
 
