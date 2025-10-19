@@ -31,7 +31,7 @@ public class JarsAuth {
             DataManager.getServerInstance();
         }
         MinecraftForge.EVENT_BUS.register(EventHandler.class);
-
+        //edit
     }
 
     public static File getJarFile() {
