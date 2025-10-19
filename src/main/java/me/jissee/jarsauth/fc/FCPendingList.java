@@ -1,0 +1,336 @@
+/*
+ * This file is part of the JarsAuth, licensed under the
+ * GNU General Public License v3.0. <https://www.gnu.org/licenses/>
+ *
+ * Copyright (C) 2024 Jissee and contributors
+ */
+package me.jissee.jarsauth.fc;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.mojang.logging.LogUtils;
+import me.jissee.jarsauth.config.ConfigKey;
+import me.jissee.jarsauth.config.StaticConfig;
+import me.jissee.jarsauth.event.EventHandler;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundResourcePackPacket;
+import net.minecraft.server.level.ServerPlayer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.ref.Reference;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+public class FCPendingList {
+    private static final Logger LOGGER = LogUtils.getLogger();
+    protected static final Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+    private static final String NONE = "none";
+    private static final String CALCULATING = "calculating";
+    private static final String FOLDER = "folder";
+    private static final FCPendingList instance = new FCPendingList();
+    private static Thread independentThread;
+    public static FCPendingList getInstance(){
+        return instance;
+    }
+    private final Object LOCK = new Object();
+    private final ArrayList<Record> records = new ArrayList<>();
+
+    public void playerLogin(ServerPlayer player) {
+        synchronized (LOCK){
+            boolean flag = true;
+            //if(EventHandler.getServerSaveDir() != null){
+                Record r = new Record(player, 0, NONE, NONE);
+                for(Record r1 : records){
+                    if(r.equals(r1)){
+                        flag = false;
+                        break;
+                    }
+                }
+                if(flag){
+                    records.add(r);
+                }
+            //}
+        }
+    }
+
+    public void addHash(ServerPlayer player, String hash){
+        synchronized (LOCK){
+            for(int i = 0; i < records.size(); i++){
+                Record r = records.get(i);
+                synchronized (r){
+                    if(r.player.getId() == player.getId()){
+                        r.got = hash;
+                        if(r.player.isRemoved()){
+                            r.player = player;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+
+    public void tick() {
+        synchronized (LOCK) {
+            for (int i = 0; i < records.size(); i++) {
+                Record r = records.get(i);
+                synchronized (r) {
+                    if (r.player == null || r.player.hasDisconnected()) {
+                        records.remove(r);
+                        i--;
+                    }
+                }
+            }
+        }
+
+        synchronized (LOCK) {
+            for (int i = 0; i < records.size(); i++) {
+                Record r = records.get(i);
+                synchronized (r){
+                    long timeout = StaticConfig.getInstance().getInt(ConfigKey.FILE_CHECKSUM_TIMEOUT);
+                    //时间超过超时时间
+                    if (System.nanoTime() - r.time > timeout * 1000 * 1000 * 1000
+                            && (r.got.equals(NONE)) //仍未收到客户端的反馈
+                            && !r.expected.equals(NONE)                    //服务端完成计算
+                            && !r.expected.equals(CALCULATING)
+                    ) {
+                        if(StaticConfig.getInstance().getBoolean(ConfigKey.FILE_CHECKSUM_ENABLED)){
+                            EventHandler.addPlayerToBeRemove(r.player, Component.translatable("text.fcauth.timeout"), 0);
+                        }
+
+                        records.remove(r);
+                        i--;
+                        continue;
+                    }
+
+                    if (!r.expected.equals(NONE)                //服务端完成计算
+                            && !r.expected.equals(CALCULATING)
+                            && !r.got.equals(NONE)             //客户端完成计算
+                    ) {
+                        BiPredicate<String, String> checkAuth = (expected, got) -> {
+                            try {
+                                for (int x = 0; x < expected.length(); x += 32) {
+                                    if (expected.substring(x, x + 32).equals(got)) {
+                                        return true;
+                                    }
+                                }
+                            } catch (Exception e) {
+                                return false;
+                            }
+                            return false;
+                        };
+                        ServerPlayer player = r.player;
+                        if (checkAuth.test(r.expected, r.got)) {
+                            r.time = System.nanoTime();
+                            r.expected = NONE;
+                            r.got = NONE;
+                            LOGGER.debug("Player {} passed FC authentication", r.player.getName().getString());
+                            if(StaticConfig.getInstance().getBoolean(ConfigKey.CLIENT_AUTH_ENABLED)){
+                                //CAPendingList.getInstance().allowNew(player);
+                            }else{
+                                if(StaticConfig.getInstance().getBoolean(ConfigKey.SERVER_LICENSE_ENABLED)){
+                                    //SLPendingList.getInstance().allowNew(player);
+                                }
+                            }
+                        } else {
+                            LOGGER.info("\ne={}||\ng={}\n", r.expected, r.got);
+                            if(StaticConfig.getInstance().getBoolean(ConfigKey.FILE_CHECKSUM_ENABLED)){
+                                EventHandler.addPlayerToBeRemove(player, Component.translatable("text.fcauth.fail"), 0);
+                            }
+                            records.remove(r);
+                            i--;
+                        }
+                    }
+                }
+            }
+        }
+
+        synchronized (LOCK) {
+            for (Record r : records) {
+                synchronized (r) {
+                    long interval = StaticConfig.getInstance().getInt(ConfigKey.FILE_CHECKSUM_INTERVAL);
+                    if (r.expected.equals(NONE)    //服务端未完成计算
+                            //时间超过间隔时间
+                            && System.nanoTime() - r.time > interval * 1000 * 1000 * 1000
+                    ) {
+                        Supplier<String> getRandom = () -> {
+                            StringBuilder sb = new StringBuilder();
+                            for(int i = 0; i < 32; i++){
+                                sb.append((char)(Math.random() * 95 + 32));
+                            }
+                            return sb.toString();
+                        };
+                        String salt1 = getRandom.get();
+                        String salt2 = getRandom.get();
+
+                        Thread thread = new Thread(() -> {
+                            /*
+                            //SettingFileChecksum settingFileChecksum = Settings.getFileChecksumSetting();
+                            ArrayList<Map<String, String>> allDetails = ClientDetail.getAllDetails();
+
+                            StringBuilder total1 = new StringBuilder();
+                            StringBuilder total2 = new StringBuilder();
+
+                            ArrayList<String> inclStr = new ArrayList<>();
+                            ArrayList<String> types = new ArrayList<>();
+
+                            StringBuilder folders = new StringBuilder();
+                            StringBuilder files = new StringBuilder();
+
+                            for(Map<String, String> theMap: allDetails){
+                                ArrayList<String> rawIncl = settingFileChecksum.getInclusion();
+
+                                inclStr.clear();
+                                types.clear();
+
+                                folders.setLength(0);
+                                files.setLength(0);
+
+                                for(String incl : rawIncl){
+                                    int lastpos = incl.lastIndexOf('/');
+                                    String former;
+                                    String latter;
+                                    if(lastpos > -1){
+                                        former = incl.substring(0, lastpos);
+                                        latter = incl.substring(lastpos + 1);
+                                    }else{
+                                        former = "";
+                                        latter = incl;
+                                    }
+
+                                    try{
+                                        if(latter.equals("*")){
+                                            String processedValue = theMap.get(former);
+                                            if(processedValue != null && processedValue.equals(FOLDER)){
+                                                inclStr.add(former + '/');
+                                                types.add("*");
+                                            }
+                                        }else{
+                                            String processedValue = theMap.get(incl);
+                                            if (processedValue != null) {
+                                                if(processedValue.equals(FOLDER)){
+                                                    inclStr.add(incl + '/');
+                                                    types.add(FOLDER);
+                                                }else{
+                                                    inclStr.add(incl);
+                                                    types.add("");
+                                                }
+                                            }
+                                        }
+                                    }catch(NullPointerException e){
+                                        LOGGER.error("Error while loading client detail.", e);
+                                    }
+                                }
+
+                                for(Map.Entry<String, String> entry : theMap.entrySet()){
+                                    String k = entry.getKey();
+                                    String v = entry.getValue();
+                                    if(v.equals(FOLDER)) k = k + '/';
+                                    for (int i = 0; i < inclStr.size(); i++) {
+                                        String incl = inclStr.get(i);
+                                        String type = types.get(i);
+                                        if(k.startsWith(incl)){
+                                            if(type.equals("*")){
+                                                if(v.equals(FOLDER)){
+                                                    folders.append(k).append(v).append('\n');
+                                                }else{
+                                                    files.append(k).append(v).append('\n');
+                                                }
+                                            }else if(k.lastIndexOf("/") == incl.lastIndexOf("/")){
+                                                if(v.equals(FOLDER)){
+                                                    folders.append(k).append(v).append('\n');
+                                                }else{
+                                                    files.append(k).append(v).append('\n');
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                String finalStr = folders.append(files).toString();
+
+                                String preValue = finalStr + salt1;
+                                LoggerFactory.getLogger("preValue1s").info("JARSAUTH DEBUG\n{}", preValue);
+                                String finalValue = getMD5.apply(preValue);
+                                LoggerFactory.getLogger("finalValue1s").info("JARSAUTH DEBUG\n{}", finalValue);
+                                total1.append(finalValue);
+
+                                preValue = finalStr + salt2;
+                                LoggerFactory.getLogger("preValue2s").info("JARSAUTH DEBUG\n{}", preValue);
+                                finalValue = getMD5.apply(preValue);
+                                LoggerFactory.getLogger("finalValue2s").info("JARSAUTH DEBUG\n{}", finalValue);
+                                total2.append(finalValue);
+                            }
+                            synchronized (r) {
+                                r.expected = total1.toString();
+                            }
+*/
+                        });
+                        r.expected = CALCULATING;
+                        thread.start();
+/*
+                        SettingFileChecksum settingFileChecksum = Settings.getFileChecksumSetting();
+                        ArrayList<String> incl = settingFileChecksum.getInclusion();
+                        String str = gson.toJson(incl);
+                        r.time = System.nanoTime();
+                        Compatibility.sendVanillaPacket(r.player, new ClientboundResourcePackPacket(str, "JARSAUTH AUTHENTICATION INFORMATI0N", false, Compatibility.literal(salt1)));
+                        Compatibility.sendModPacket(r.player, new FCBroadcastPacket(str, "JARSAUTH AUTHENTICATION INFORMATI0N", Compatibility.literal(salt2)));
+                    */
+                    }
+
+                }
+            }
+        }
+    }
+
+
+    public static Thread getIndependentThread(){
+        if (independentThread == null || !independentThread.isAlive()) {
+            independentThread = new Thread(()->{
+                while(true)
+                    try{
+                        instance.tick();
+                        Thread.sleep(500);
+                    }
+                    catch(Exception e){}
+            });
+            independentThread.setDaemon(true);
+        }
+        return independentThread;
+    }
+
+    private static class Record {
+        private ServerPlayer player;
+        private volatile long time;
+        private volatile String expected;
+        private volatile String got;
+        private Record(ServerPlayer player, long time, String expected, String got){
+            this.player = player;
+            this.time = time;
+            this.expected = expected;
+            this.got = got;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Record record = (Record) o;
+            return Objects.equals(player.getId(), record.player.getId());
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(player.getId());
+        }
+    }
+
+}
+

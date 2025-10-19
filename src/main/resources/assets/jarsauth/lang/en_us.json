@@ -1,0 +1,17 @@
+{
+  "text.fcauth.timeout": "File checksum timeout",
+  "text.fcauth.fail": "File checksum failed",
+
+  "text.caauth.timeout": "Client authentication timeout",
+  "text.caauth.fail": "Client authentication failed",
+  "text.firsttime": "As this is your first login, you will be automatically disconnected after registering with the server.\n(This is not an error, you can reconnect immediately)",
+
+  "text.slauth.fail": "No valid server license",
+
+  "text.reloaded": "Configuration reloaded",
+  "text.record.off": "Recording mode is off",
+  "text.record.on": "Recording mode is on",
+  "text.disconn.relative": "Suspicious relative path check",
+  "text.disconn.recording": "Server is recording client information and is not open to public",
+  "text.disconn.recorded": "Client information saved"
+}
