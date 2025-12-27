@@ -2,7 +2,7 @@ package me.jissee.jarsauth.data.model;
 
 import java.util.List;
 
-public record AuthProfile(
+public record AuthRuleEntry(
         String groupName,
         List<String> rules
 ) {

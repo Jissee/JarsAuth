@@ -1,20 +1,23 @@
 package me.jissee.jarsauth.data.dao;
 
+import me.jissee.jarsauth.data.ConnectionProvider;
+
 import java.sql.*;
 import java.util.Optional;
 import java.util.UUID;
 
 public class ServerIdDAO implements DAO{
-    private final Connection connection;
+    private final ConnectionProvider provider;
 
-    public ServerIdDAO(Connection connection) {
-        this.connection = connection;
+    public ServerIdDAO(ConnectionProvider provider) {
+        this.provider = provider;
     }
 
     public Optional<UUID> getServerId() {
         String sql = "SELECT value FROM server_id;";
-        try(Statement statement = connection.createStatement()){
-            ResultSet result = statement.executeQuery(sql);
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql);
+             ResultSet result = statement.executeQuery()) {
             if(result.next()) {
                 String value = result.getString("value");
                 return Optional.of(UUID.fromString(value));
@@ -27,7 +30,8 @@ public class ServerIdDAO implements DAO{
 
     public UUID saveServerId(UUID serverId) {
         String sql = "INSERT INTO server_id VALUES (?);";
-        try(PreparedStatement statement = connection.prepareStatement(sql)){
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, serverId.toString());
             statement.execute();
             return serverId;
@@ -38,7 +42,8 @@ public class ServerIdDAO implements DAO{
 
     public void resetServerId() {
         String sql = "DELETE FROM server_id;";
-        try(PreparedStatement statement = connection.prepareStatement(sql)){
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.execute();
         }catch (SQLException e){
             throw new RuntimeException(e);
@@ -47,8 +52,8 @@ public class ServerIdDAO implements DAO{
 
 
     @Override
-    public Connection getConnection() {
-        return connection;
+    public Connection getConnection() throws SQLException {
+        return provider.getConnection();
     }
 
     @Override

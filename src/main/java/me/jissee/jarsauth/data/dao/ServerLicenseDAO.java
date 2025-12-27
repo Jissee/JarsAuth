@@ -1,133 +1,116 @@
 package me.jissee.jarsauth.data.dao;
 
-import me.jissee.jarsauth.data.model.LicenseType;
+import me.jissee.jarsauth.data.ConnectionProvider;
 import me.jissee.jarsauth.data.model.ServerLicense;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class ServerLicenseDAO implements DAO{
-    private final Connection connection;
-    public ServerLicenseDAO(Connection connection) {
-        this.connection = connection;
+    private final ConnectionProvider provider;
+    public ServerLicenseDAO(ConnectionProvider provider) {
+        this.provider = provider;
+    }
+
+    public String getNextAvailableId() {
+        String sql =
+                "SELECT IFNULL((" +
+                        "   SELECT id + 1 " +
+                        "   FROM server_license " +
+                        "   WHERE NOT EXISTS (" +
+                        "       SELECT 1 FROM server_license s2 " +
+                        "       WHERE s2.id = server_license.id + 1" +
+                        "   ) " +
+                        "   ORDER BY id " +
+                        "   LIMIT 1" +
+                        "), 0)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            if (rs.next()) {
+                return String.valueOf(rs.getInt(1));
+            }
+            throw new RuntimeException("Failed to get next available id");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public boolean exists(String id) {
+        String sql = "SELECT COUNT(id) FROM server_license where id = ?; ";
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setString(1, id);
+            try(ResultSet resultSet = statement.executeQuery()){
+                if(resultSet.next()) {
+                    return resultSet.getInt(1) >= 1;
+                }
+                throw new RuntimeException("Failed to get id from server_license");
+            }
+        }catch (SQLException e){
+            throw new RuntimeException(e);
+        }
     }
 
     public List<ServerLicense> getAllLicenses() {
-        String sql = "SELECT uuid, user_name, valid_from, valid_until, type, allowance, period FROM server_license ORDER BY user_name, valid_until; ";
-        try(PreparedStatement statement = connection.prepareStatement(sql)){
+        String sql = "SELECT id, valid_from, valid_until, type, reset_time, clear_time, allowance FROM server_license ORDER BY id; ";
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             List<ServerLicense> licenses = new ArrayList<>();
-            ResultSet resultSet = statement.executeQuery();
-            while(resultSet.next()){
-                UUID uuid = UUID.fromString(resultSet.getString("uuid"));
-                String userName = resultSet.getString("user_name");
-                long validFrom = resultSet.getLong("valid_from");
-                long validUntil = resultSet.getLong("valid_until");
-                LicenseType type = LicenseType.fromCode(resultSet.getInt("type"));
-                long allowance = resultSet.getLong("allowance");
-                long allowancePeriod = resultSet.getLong("period");
-                ServerLicense license = new ServerLicense(uuid, userName, validFrom, validUntil, type, allowance, allowancePeriod);
-                licenses.add(license);
+            try(ResultSet resultSet = statement.executeQuery()){
+                while(resultSet.next()){
+                    String id = resultSet.getString("id");
+                    LocalDate validFrom = resultSet.getDate("valid_from").toLocalDate();
+                    LocalDate validUntil = resultSet.getDate("valid_until").toLocalDate();
+                    int type = resultSet.getInt("type");
+                    LocalTime resetTime = resultSet.getTime("reset_time").toLocalTime();
+                    LocalTime clearTime = resultSet.getTime("clear_time").toLocalTime();
+                    long allowance = resultSet.getLong("allowance");
+                    ServerLicense license = new ServerLicense(id, validFrom, validUntil, type, resetTime, clearTime, allowance);
+                    licenses.add(license);
+                }
+                return licenses;
             }
-            return licenses;
         }catch (SQLException e){
             throw new RuntimeException(e);
         }
     }
 
-    public List<ServerLicense> getLicensesForUser(String userName){
-        String sql = "SELECT uuid, user_name, valid_from, valid_until, type, allowance, period FROM server_license WHERE user_name = ? ORDER BY valid_until; ";
-        try(PreparedStatement statement = connection.prepareStatement(sql)){
-            statement.setString(1, userName);
-            List<ServerLicense> licenses = new ArrayList<>();
-            ResultSet resultSet = statement.executeQuery();
-            while(resultSet.next()){
-                UUID uuid = UUID.fromString(resultSet.getString("uuid"));
-                long validFrom = resultSet.getLong("valid_from");
-                long validUntil = resultSet.getLong("valid_until");
-                LicenseType type = LicenseType.fromCode(resultSet.getInt("type"));
-                long allowance = resultSet.getLong("allowance");
-                long allowancePeriod = resultSet.getLong("period");
-                ServerLicense license = new ServerLicense(
-                        uuid,
-                        userName,
-                        validFrom,
-                        validUntil,
-                        type,
-                        allowance,
-                        allowancePeriod
-                );
-                licenses.add(license);
-            }
-            return licenses;
-        }catch (SQLException e){
-            throw new RuntimeException(e);
-        }
-    }
-
-    public ServerLicense getLicense(UUID uuid) {
-        String sql = "SELECT uuid, user_name, valid_from, valid_until, type, allowance, period FROM server_license WHERE uuid = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, uuid.toString());
-            ResultSet rs = statement.executeQuery();
-            if (rs.next()) {
-                return new ServerLicense(
-                        UUID.fromString(rs.getString("uuid")),
-                        rs.getString("user_name"),
-                        rs.getLong("valid_from"),
-                        rs.getLong("valid_until"),
-                        LicenseType.fromCode(rs.getInt("type")),
-                        rs.getLong("allowance"),
-                        rs.getLong("period")
-                );
-            } else {
-                return null;
+    public ServerLicense getLicense(String id) {
+        String sql = "SELECT id, valid_from, valid_until, type, reset_time, clear_time, allowance FROM server_license WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setString(1, id);
+            try(ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    return new ServerLicense(
+                            rs.getString("id"),
+                            rs.getDate("valid_from").toLocalDate(),
+                            rs.getDate("valid_until").toLocalDate(),
+                            rs.getInt("type"),
+                            rs.getTime("reset_time").toLocalTime(),
+                            rs.getTime("clear_time").toLocalTime(),
+                            rs.getLong("allowance")
+                    );
+                } else {
+                    return null;
+                }
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void updateAllowance(UUID uuid, int delta) {
-        String sql = "UPDATE server_license SET allowance = allowance + ? WHERE uuid = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, delta);
-            statement.setString(2, uuid.toString());
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public void setAllowance(UUID uuid, int allowance) {
-        String sql = "UPDATE server_license SET allowance = ? WHERE uuid = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, allowance);
-            statement.setString(2, uuid.toString());
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public void removeLicense(UUID uuid) {
-        String sql = "DELETE FROM server_license WHERE uuid = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, uuid.toString());
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public void removeExpiredLicenses() {
-        String sql = "DELETE FROM server_license WHERE valid_until < ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, System.currentTimeMillis() / 1000);
+    public void removeLicense(String id) {
+        String sql = "DELETE FROM server_license WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setString(1, id);
             statement.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -136,40 +119,44 @@ public class ServerLicenseDAO implements DAO{
 
 
     public void saveLicense(ServerLicense license){
-        String sql = "INSERT INTO server_license(uuid, user_name, valid_from, valid_until, type, allowance, period) VALUES (?, ?, ?, ?, ?, ?, ?);";
-        try(PreparedStatement statement = connection.prepareStatement(sql)){
-            statement.setString(1, license.uuid().toString());
-            statement.setString(2, license.userName());
-            statement.setLong(3, license.validFrom());
-            statement.setLong(4, license.validUntil());
-            statement.setInt(5, license.type().getCode());
-            statement.setLong(6, license.allowance().get());
-            statement.setLong(7, license.period().get());
+        String sql = "INSERT INTO server_license(id, valid_from, valid_until, type, reset_time, clear_time, allowance) VALUES (?, ?, ?, ?, ?, ?, ?);";
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setString(1, license.id());
+            statement.setDate(2, Date.valueOf(license.validFrom()));
+            statement.setDate(3, Date.valueOf(license.validUntil()));
+            statement.setInt(4, license.type());
+            statement.setTime(5, Time.valueOf(license.resetTime()));
+            statement.setTime(6, Time.valueOf(license.clearTime()));
+            statement.setLong(7, license.allowance());
             statement.execute();
         }catch (SQLException e){
             throw new RuntimeException(e);
         }
     }
 
-    public void updateLicense(ServerLicense license) {
+    public void updateLicense(String id, ServerLicense newLicense) {
         String sql = """
         UPDATE server_license
-        SET user_name = ?,
+        SET id = ?,
             valid_from = ?,
             valid_until = ?,
             type = ?,
-            allowance = ?,
-            period = ?
-        WHERE uuid = ?
+            reset_time = ?,
+            clear_time = ?,
+            allowance = ?
+        WHERE id = ?
     """;
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, license.userName());
-            statement.setLong(2, license.validFrom());
-            statement.setLong(3, license.validUntil());
-            statement.setInt(4, license.type().getCode());
-            statement.setLong(5, license.allowance().get());
-            statement.setLong(6, license.period().get());
-            statement.setString(7, license.uuid().toString());
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setString(1, newLicense.id());
+            statement.setDate(2, Date.valueOf(newLicense.validFrom()));
+            statement.setDate(3, Date.valueOf(newLicense.validUntil()));
+            statement.setInt(4, newLicense.type());
+            statement.setTime(5, Time.valueOf(newLicense.resetTime()));
+            statement.setTime(6, Time.valueOf(newLicense.clearTime()));
+            statement.setLong(7, newLicense.allowance());
+            statement.setString(8, id);
             statement.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -179,8 +166,8 @@ public class ServerLicenseDAO implements DAO{
 
 
     @Override
-    public Connection getConnection() {
-        return connection;
+    public Connection getConnection() throws SQLException {
+        return provider.getConnection();
     }
 
     @Override
@@ -188,15 +175,17 @@ public class ServerLicenseDAO implements DAO{
         return new String[]{
         """
         CREATE TABLE IF NOT EXISTS `server_license` (
-            uuid TEXT PRIMARY KEY,
-            user_name TEXT NOT NULL,
-            valid_from DATETIME NOT NULL,
-            valid_until DATETIME NOT NULL,
+            id TEXT PRIMARY KEY,
+            valid_from DATE NOT NULL,
+            valid_until DATE NOT NULL,
             type INTEGER NOT NULL,
-            allowance LONG NOT NULL,
-            period LONG NOT NULL
+            reset_time TIME NOT NULL,
+            clear_time TIME NOT NULL,
+            allowance LONG NOT NULL
         );
         """
         };
     }
+
+
 }

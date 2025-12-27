@@ -2,35 +2,43 @@ package me.jissee.jarsauth.data;
 
 import me.jissee.jarsauth.data.service.*;
 
+import java.lang.reflect.Constructor;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 public class DataManager {
     private static final String DB_NAME = "jarsauth.db";
+    private static final String DB_MEMORY = ":memory:";
+    private static final String DB_URL_PREFIX = "jdbc:sqlite:";
     private static DataManager clientInstance;
     private static DataManager serverInstance;
 
-    private Map<Class<? extends Service>, Service> services = new HashMap<>();
-    private Connection connection;
+    private final String dbName;
+
+    private Map<Class<? extends Service>, Service> services = new ConcurrentHashMap<>();
 
     public static DataManager getClientInstance() {
-        if (clientInstance == null) clientInstance = new DataManager(true, false);
+        if (clientInstance == null) clientInstance = new DataManager(DB_NAME, false);
         return clientInstance;
     }
 
     public static DataManager getServerInstance() {
-        if (serverInstance == null) serverInstance = new DataManager(false, true);
+        if (serverInstance == null) serverInstance = new DataManager(DB_NAME, true);
         return serverInstance;
     }
 
-    public DataManager(boolean isTemp, boolean isServer) {
-        initConnection(isTemp);
-        initForeignKey();
+    public DataManager(String dbName, boolean isServer) {
+        this.dbName = dbName;
+        try {
+            initProperty();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
         if (isServer) {
             registerServer();
         }else{
@@ -40,49 +48,54 @@ public class DataManager {
 
     private void registerServer(){
         registerService(ConfigService.class, ConfigService::new);
-        registerService(AcceptedDetailService.class, AcceptedDetailService::new);
-        registerService(AuthProfileService.class, AuthProfileService::new);
+        registerService(AccProfileService.class, AccProfileService::new);
+        registerService(AuthRuleService.class, AuthRuleService::new);
         registerService(ServerIdService.class, ServerIdService::new);
         registerService(UserIdService.class, UserIdService::new);
         registerService(ServerLicenseService.class, ServerLicenseService::new);
+        registerService(LicenseGroupRuleService.class, LicenseGroupRuleService::new);
+        registerService(LicenseGroupService.class, LicenseGroupService::new);
+        registerService(TimeCacheService.class, TimeCacheService::new);
+
+        for(Map.Entry<Class<? extends Service>, Service> entry : services.entrySet()){
+            Service service = entry.getValue();
+            service.inject(this::getService);
+        }
     }
 
     private void registerClient(){
         registerService(UserIdClientService.class, UserIdClientService::new);
     }
 
-    public Connection getConnection() {
+    private String getConnectionStr(){
+        return DB_URL_PREFIX + dbName;
+    }
+
+    public Connection getConnection() throws SQLException {
+        Connection connection = DriverManager.getConnection(getConnectionStr());
+        try(Statement statement = connection.createStatement()){
+            statement.execute("PRAGMA foreign_keys = ON;");
+            statement.execute("PRAGMA busy_timeout = 5000;");
+        }
         return connection;
     }
 
-    private void initConnection(boolean isTemp) {
-        if(connection != null){
-            return;
-        }
-        try {
-            if (isTemp) {
-                connection = DriverManager.getConnection("jdbc:sqlite::memory:");
-            } else {
-                connection = DriverManager.getConnection("jdbc:sqlite:" + DB_NAME);
-            }
-        }catch (SQLException e){
-            throw new RuntimeException(e);
-        }
-    }
 
-    private void initForeignKey() {
+    private void initProperty() throws SQLException{
+        Connection connection = DriverManager.getConnection(getConnectionStr());
         try(Statement statement = connection.createStatement()){
-            statement.execute("PRAGMA foreign_keys = ON;");
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+            statement.execute("PRAGMA journal_mode = WAL;");
+            statement.execute("PRAGMA synchronous = NORMAL;");
         }
     }
 
-    private <T extends Service> void registerService(Class<T> clazz, Function<Connection, T> serviceProvider) {
-        Service service = serviceProvider.apply(connection);
+    private <T extends Service> void registerService(Class<T> clazz, Function<ConnectionProvider, T> serviceProvider) {
+        Service service = serviceProvider.apply(this::getConnection);
         service.initTable();
         services.put(clazz, service);
     }
+
+
 
     public <T extends Service> T getService(Class<T> clazz) {
         return (T) services.get(clazz);

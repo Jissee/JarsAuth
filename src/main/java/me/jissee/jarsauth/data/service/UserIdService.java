@@ -1,5 +1,6 @@
 package me.jissee.jarsauth.data.service;
 
+import me.jissee.jarsauth.data.ConnectionProvider;
 import me.jissee.jarsauth.data.dao.UserIdDAO;
 
 import java.sql.Connection;
@@ -10,8 +11,8 @@ import java.util.UUID;
 public class UserIdService implements Service {
     private final UserIdDAO dao;
 
-    public UserIdService(Connection connection) {
-        this.dao = new UserIdDAO(connection);
+    public UserIdService(ConnectionProvider provider) {
+        this.dao = new UserIdDAO(provider);
     }
 
     public boolean hasUserId(String userName){

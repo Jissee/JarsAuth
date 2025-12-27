@@ -4,7 +4,6 @@ import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.config.StaticConfig;
 import me.jissee.jarsauth.config.VolatileConfig;
 import me.jissee.jarsauth.data.DataManager;
-import me.jissee.jarsauth.data.service.AcceptedDetailService;
 import me.jissee.jarsauth.data.service.ConfigService;
 import me.jissee.jarsauth.pending.CAPendingList;
 import me.jissee.jarsauth.pending.FCPendingList;

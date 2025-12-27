@@ -16,7 +16,7 @@ class UserIdClientServiceTest {
 
     @BeforeEach
     void setup() {
-        dataManager = new DataManager(false, false); // 使用内存数据库 + 客户端模式
+        dataManager = new DataManager("memory:", false); // 使用内存数据库 + 客户端模式
         clientService = dataManager.getService(UserIdClientService.class);
     }
 

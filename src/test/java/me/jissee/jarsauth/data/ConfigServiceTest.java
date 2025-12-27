@@ -15,7 +15,7 @@ public class ConfigServiceTest {
 
     @BeforeEach
     public void setup() {
-        dataManager = new DataManager(false, true); // 使用内存数据库并注册服务
+        dataManager = new DataManager("memory:", true); // 使用内存数据库并注册服务
         configService = dataManager.getService(ConfigService.class);
     }
 

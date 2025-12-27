@@ -1,5 +1,7 @@
 package me.jissee.jarsauth.data.dao;
 
+import me.jissee.jarsauth.data.ConnectionProvider;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -8,15 +10,16 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class UserIdClientDAO implements DAO{
-    private final Connection connection;
+    private final ConnectionProvider provider;
 
-    public UserIdClientDAO(Connection connection) {
-        this.connection = connection;
+    public UserIdClientDAO(ConnectionProvider provider) {
+        this.provider = provider;
     }
 
     public Optional<UUID> getUserId(String userName, UUID serverId) {
         String sql = "SELECT user_id FROM user_id_client WHERE user_name = ? AND server_id = ?;";
-        try(PreparedStatement statement = connection.prepareStatement(sql)){
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, userName);
             statement.setString(2, serverId.toString());
             ResultSet resultSet = statement.executeQuery();
@@ -33,7 +36,8 @@ public class UserIdClientDAO implements DAO{
         String sql = "INSERT INTO user_id_client(user_name, user_id, server_id) " +
                 "VALUES (?, ?, ?) " +
                 "ON CONFLICT(user_name, server_id) DO UPDATE SET user_id = excluded.user_id;";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, userName);
             statement.setString(2, userId.toString());
             statement.setString(3, serverId.toString());
@@ -45,8 +49,8 @@ public class UserIdClientDAO implements DAO{
 
 
     @Override
-    public Connection getConnection() {
-        return connection;
+    public Connection getConnection() throws SQLException {
+        return provider.getConnection();
     }
 
     @Override

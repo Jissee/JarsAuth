@@ -1,24 +1,20 @@
 package me.jissee.jarsauth.data;
 
 import me.jissee.jarsauth.data.model.AcceptedDetail;
-import me.jissee.jarsauth.data.service.AcceptedDetailService;
+import me.jissee.jarsauth.data.service.AccProfileService;
 import org.junit.jupiter.api.*;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class AcceptedDetailServiceTest {
+public class AccProfileServiceTest {
 
     private DataManager dataManager;
-    private AcceptedDetailService service;
+    private AccProfileService service;
 
     @BeforeEach
     public void setup() {
-        dataManager = new DataManager(false, true); // 使用内存数据库
-        service = dataManager.getService(AcceptedDetailService.class);
+        dataManager = new DataManager("memory:", true); // 使用内存数据库
+        service = dataManager.getService(AccProfileService.class);
     }
 
     @Test

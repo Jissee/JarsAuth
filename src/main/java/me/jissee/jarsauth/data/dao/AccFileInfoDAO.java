@@ -1,28 +1,29 @@
 package me.jissee.jarsauth.data.dao;
 
-import me.jissee.jarsauth.data.model.AccInfoEntry;
+import me.jissee.jarsauth.data.ConnectionProvider;
+import me.jissee.jarsauth.data.model.AccFileInfoEntry;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class AccInfoDAO implements DAO {
-    private final Connection connection;
+public class AccFileInfoDAO implements DAO {
+    private final ConnectionProvider provider;
 
-    public AccInfoDAO(Connection connection) {
-        this.connection = connection;
+    public AccFileInfoDAO(ConnectionProvider provider) {
+        this.provider = provider;
         initTable();
     }
 
-    public List<AccInfoEntry> getAllEntries(String groupName) {
-        String sql = "SELECT key, value FROM acc_info WHERE group_name = ? ORDER BY `key`";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+    public List<String> getAllFileNames(String groupName){
+        String sql = "SELECT key FROM acc_file_info WHERE group_name = ? ORDER BY `key`";
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             stmt.setString(1, groupName);
             ResultSet rs = stmt.executeQuery();
-            List<AccInfoEntry> list = new ArrayList<>();
+            List<String> list = new ArrayList<>();
             while (rs.next()) {
-                list.add(new AccInfoEntry(rs.getString("key"), rs.getString("value")));
+                list.add(rs.getString("key"));
             }
             return list;
         } catch (SQLException e) {
@@ -30,15 +31,30 @@ public class AccInfoDAO implements DAO {
         }
     }
 
-    public List<AccInfoEntry> getEntriesByKey(String group, String key) {
-        String sql = "SELECT key, value FROM acc_info WHERE group_name = ? AND key = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+    public List<AccFileInfoEntry> getAllEntries(String groupName) {
+        String sql = "SELECT key, value FROM acc_file_info WHERE group_name = ? ORDER BY `key`";
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            stmt.setString(1, groupName);
+            ResultSet rs = stmt.executeQuery();
+            List<AccFileInfoEntry> list = new ArrayList<>();
+            while (rs.next()) {
+                list.add(new AccFileInfoEntry(rs.getString("key"), rs.getString("value")));
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<AccFileInfoEntry> getEntriesByKey(String group, String key) {
+        String sql = "SELECT key, value FROM acc_file_info WHERE group_name = ? AND key = ?";
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             stmt.setString(1, group);
             stmt.setString(2, key);
             ResultSet rs = stmt.executeQuery();
-            List<AccInfoEntry> result = new ArrayList<>();
+            List<AccFileInfoEntry> result = new ArrayList<>();
             while (rs.next()) {
-                result.add(new AccInfoEntry(rs.getString("key"), rs.getString("value")));
+                result.add(new AccFileInfoEntry(rs.getString("key"), rs.getString("value")));
             }
             return result;
         } catch (SQLException e) {
@@ -46,15 +62,15 @@ public class AccInfoDAO implements DAO {
         }
     }
 
-    public List<AccInfoEntry> getEntriesByPrefix(String group, String prefix) {
-        String sql = "SELECT key, value FROM acc_info WHERE group_name = ? AND key LIKE ?";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+    public List<AccFileInfoEntry> getEntriesByPrefix(String group, String prefix) {
+        String sql = "SELECT key, value FROM acc_file_info WHERE group_name = ? AND key LIKE ?";
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             stmt.setString(1, group);
             stmt.setString(2, prefix + "%");
             ResultSet rs = stmt.executeQuery();
-            List<AccInfoEntry> list = new ArrayList<>();
+            List<AccFileInfoEntry> list = new ArrayList<>();
             while (rs.next()) {
-                list.add(new AccInfoEntry(rs.getString("key"), rs.getString("value")));
+                list.add(new AccFileInfoEntry(rs.getString("key"), rs.getString("value")));
             }
             return list;
         } catch (SQLException e) {
@@ -62,21 +78,21 @@ public class AccInfoDAO implements DAO {
         }
     }
 
-    public List<AccInfoEntry> getEntriesByPrefixWithDepth(String group, String prefix, int depth) {
+    public List<AccFileInfoEntry> getEntriesByPrefixWithDepth(String group, String prefix, int depth) {
         String sql = """
-            SELECT key, value FROM acc_info
+            SELECT key, value FROM acc_file_info
             WHERE group_name = ?
               AND key LIKE ?
               AND (LENGTH(key) - LENGTH(REPLACE(key, '/', ''))) = ?;
             """;
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             stmt.setString(1, group);
             stmt.setString(2, prefix + "/%");
             stmt.setInt(3, depth);
             ResultSet rs = stmt.executeQuery();
-            List<AccInfoEntry> list = new ArrayList<>();
+            List<AccFileInfoEntry> list = new ArrayList<>();
             while (rs.next()) {
-                list.add(new AccInfoEntry(rs.getString("key"), rs.getString("value")));
+                list.add(new AccFileInfoEntry(rs.getString("key"), rs.getString("value")));
             }
             return list;
         } catch (SQLException e) {
@@ -85,8 +101,8 @@ public class AccInfoDAO implements DAO {
     }
 
     public void insertEntries(String group, Map<String, String> files, List<String> folders) {
-        String sql = "INSERT INTO acc_info (group_name, key, value) VALUES (?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        String sql = "INSERT INTO acc_file_info (group_name, key, value) VALUES (?, ?, ?)";
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             for (Map.Entry<String, String> entry : files.entrySet()) {
                 stmt.setString(1, group);
                 stmt.setString(2, entry.getKey());
@@ -106,8 +122,8 @@ public class AccInfoDAO implements DAO {
     }
 
     public List<String> getRegisteredAccGroupNames() {
-        String sql = "SELECT DISTINCT group_name FROM acc_info ORDER BY group_name";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        String sql = "SELECT DISTINCT group_name FROM acc_file_info ORDER BY group_name";
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             ResultSet rs = stmt.executeQuery();
             List<String> groups = new ArrayList<>();
             while (rs.next()) {
@@ -120,15 +136,15 @@ public class AccInfoDAO implements DAO {
     }
 
     @Override
-    public Connection getConnection() {
-        return connection;
+    public Connection getConnection() throws SQLException {
+        return provider.getConnection();
     }
 
     @Override
     public String[] getDefSQL() {
         return new String[]{
             """
-            CREATE TABLE IF NOT EXISTS acc_info (
+            CREATE TABLE IF NOT EXISTS acc_file_info (
                 group_name TEXT NOT NULL,
                 key TEXT NOT NULL,
                 value TEXT,

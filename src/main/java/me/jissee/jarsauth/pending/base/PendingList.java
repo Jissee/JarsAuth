@@ -6,6 +6,8 @@ import java.util.concurrent.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static me.jissee.jarsauth.data.TimeUtil.now;
+
 /**
  * 抽象的验证任务执行器
  * 子类只需实现生成随机数据、计算预期值、比较结果
@@ -43,7 +45,7 @@ public abstract class PendingList {
 
         UserContext(UUID userId) {
             this.userId = userId;
-            this.lastVerificationTime = System.currentTimeMillis() / 1000;
+            this.lastVerificationTime = now();
         }
     }
 
@@ -141,7 +143,7 @@ public abstract class PendingList {
         Runnable task = () -> {
             // 阶段1：生成随机数据并发送
             ctx.randomData = generateRandom();
-            ctx.lastVerificationTime = System.currentTimeMillis() / 1000;
+            ctx.lastVerificationTime = now();
             sendRandom(ctx.userId, ctx.randomData);
 
             try {

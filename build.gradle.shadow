@@ -13,7 +13,10 @@ plugins {
     id 'idea'
     id 'maven-publish'
     id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    //id 'com.guardsquare.proguard' version '7.7.0'
     id 'org.spongepowered.mixin' version '0.7+'
+
 }
 
 version = mod_version
@@ -129,11 +132,10 @@ repositories {
     //maven{url = 'https://maven.aliyun.com/nexus/content/groups/public/'}
     // If you have mod jar dependencies in ./libs, you can declare them as a repository like so.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:flat_dir_resolver
-    maven {
-        url = "https://www.jetbrains.com/intellij-repository/releases"
-    }
+     flatDir {
+         dir 'libs'
+     }
 }
-//jarJar.enable()
 
 dependencies {
     // Specify the version of Minecraft to use.
@@ -142,19 +144,18 @@ dependencies {
     // If the group id is "net.minecraft" and the artifact id is one of ["client", "server", "joined"],
     // then special handling is done to allow a setup of a vanilla dependency without the use of an external repository.
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-
     minecraftLibrary "org.xerial:sqlite-jdbc:3.49.1.0"
-    minecraftLibrary "com.jetbrains.intellij.java:java-gui-forms-rt:253.28294.357"
 
-    runtimeOnly jarJar(group: 'org.xerial', name: 'sqlite-jdbc', version: '[3.49.1.0,3.49.1.1)'){
-        jarJar.pin(it, "3.49.1.0")
-    }
-    runtimeOnly jarJar(group: 'com.jetbrains.intellij.java', name: 'java-gui-forms-rt', version: '[253.28294.357,253.28294.358)'){
-        jarJar.pin(it, "253.28294.357")
-    }
+    shadow "org.xerial:sqlite-jdbc:3.49.1.0"
+
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
 
-    /////////////////////////annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
+    minecraftLibrary "com.intellij:forms_rt:"
+
+    shadow "com.intellij:forms_rt:"
+
+
+    annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
 
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
@@ -198,6 +199,7 @@ tasks.named('processResources', ProcessResources).configure {
 }
 
 // Example for how to get properties into the manifest for reading at runtime.
+/*
 tasks.named('jar', Jar).configure {
     manifest {
         attributes([
@@ -207,15 +209,13 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Title'    : project.name,
                 'Implementation-Version'  : project.jar.archiveVersion,
                 'Implementation-Vendor'   : mod_authors,
-                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                'Main-Class'              : 'me.jissee.jarsauth.gui.Bootstrap'
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])
     }
 
     // This is the preferred method to reobfuscate your jar file
     finalizedBy 'reobfJar'
-}
-/*
+}*/
 tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
     archiveClassifier.set('all')
     configurations = [project.configurations.runtimeClasspath]
@@ -238,7 +238,7 @@ tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.Shadow
     }
     //relocate "org.sqlite", "me.jissee.jarsauth.shadow.org.sqlite"
 }
-*/
+
 /*
 task copyRuntimeLibs(type: Copy) {
     from configurations.runtimeClasspath
@@ -265,13 +265,12 @@ task obfuscate(type: proguard.gradle.ProGuardTask) {
     libraryjars "${System.getProperty("java.home")}/lib/rt.jar"
 }
 */
-/*
 reobf {
     shadowJar {}
 }
-*/
 
-//build.dependsOn shadowJar
+
+build.dependsOn shadowJar
 //build.finalizedBy obfuscate
 
 test {

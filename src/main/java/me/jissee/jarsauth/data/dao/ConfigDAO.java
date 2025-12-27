@@ -1,15 +1,16 @@
 package me.jissee.jarsauth.data.dao;
 
 import me.jissee.jarsauth.config.ConfigKey;
+import me.jissee.jarsauth.data.ConnectionProvider;
 
 import java.sql.*;
 import java.util.TreeMap;
 
 public class ConfigDAO implements DAO {
-    private final Connection connection;
+    private final ConnectionProvider provider;
 
-    public ConfigDAO(Connection connection) {
-        this.connection = connection;
+    public ConfigDAO(ConnectionProvider provider) {
+        this.provider = provider;
         initTable();
     }
 
@@ -20,33 +21,36 @@ public class ConfigDAO implements DAO {
     }
 
     public void initKey(ConfigKey key) {
-        try (PreparedStatement stmt = connection.prepareStatement(
-                "SELECT COUNT(*) FROM config WHERE key = ?"
-        )) {
-            stmt.setString(1, key.getKey());
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next() && rs.getLong(1) == 0) {
-                try (PreparedStatement insertStmt = connection.prepareStatement(
-                        "INSERT INTO config (key, value) VALUES (?, ?)"
-                )) {
-                    insertStmt.setString(1, key.getKey());
-                    insertStmt.setLong(2, key.getDefaultValue());
-                    insertStmt.executeUpdate();
+        String sql = "SELECT COUNT(*) FROM config WHERE key = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setString(1, key.getKey());
+            try(ResultSet rs = statement.executeQuery()){
+                if (rs.next() && rs.getLong(1) == 0) {
+                    try (PreparedStatement insertStmt = getConnection().prepareStatement(
+                            "INSERT INTO config (key, value) VALUES (?, ?)"
+                    )) {
+                        insertStmt.setString(1, key.getKey());
+                        insertStmt.setLong(2, key.getDefaultValue());
+                        insertStmt.executeUpdate();
+                    }
                 }
             }
+
         } catch (SQLException e) {
             throw new RuntimeException("Error initializing key: " + key.getKey(), e);
         }
     }
 
     public long getValue(ConfigKey key) {
-        try (PreparedStatement stmt = connection.prepareStatement(
-                "SELECT value FROM config WHERE key = ?"
-        )) {
-            stmt.setString(1, key.getKey());
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getLong("value");
+        String sql = "SELECT value FROM config WHERE key = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setString(1, key.getKey());
+            try(ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong("value");
+                }
             }
         } catch (SQLException e) {
             throw new RuntimeException("Error getting value for key: " + key.getKey(), e);
@@ -55,13 +59,13 @@ public class ConfigDAO implements DAO {
     }
 
     public void setValue(ConfigKey key, long value) {
-        try (PreparedStatement stmt = connection.prepareStatement(
-                "INSERT INTO config (key, value) VALUES (?, ?) " +
-                        "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
-        )) {
-            stmt.setString(1, key.getKey());
-            stmt.setLong(2, value);
-            stmt.executeUpdate();
+        String sql = "INSERT INTO config (key, value) VALUES (?, ?) " +
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value";
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setString(1, key.getKey());
+            statement.setLong(2, value);
+            statement.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Error setting value for key: " + key.getKey(), e);
         }
@@ -72,8 +76,10 @@ public class ConfigDAO implements DAO {
      */
     public TreeMap<String, Long> listAllValues() {
         TreeMap<String, Long> result = new TreeMap<>();
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT key, value FROM config")) {
+        String sql = "SELECT key, value FROM config";
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql);
+             ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
                 result.put(rs.getString("key"), rs.getLong("value"));
             }
@@ -84,8 +90,8 @@ public class ConfigDAO implements DAO {
     }
 
     @Override
-    public Connection getConnection() {
-        return connection;
+    public Connection getConnection() throws SQLException {
+        return provider.getConnection();
     }
 
     @Override

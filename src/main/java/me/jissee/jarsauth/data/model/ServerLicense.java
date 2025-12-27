@@ -1,207 +1,135 @@
 package me.jissee.jarsauth.data.model;
 
+import me.jissee.jarsauth.data.service.ServerLicenseService;
 import me.jissee.jarsauth.gui.Locales;
+import org.jetbrains.annotations.NotNull;
 
 import java.text.SimpleDateFormat;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+
 
 public record ServerLicense(
-        UUID uuid,
-        String userName,
-        long validFrom,
-        long validUntil,
-        LicenseType type,
-        AtomicLong allowance,
-        AtomicLong period
-) {
-    public ServerLicense(UUID uuid, String userName, long validFrom, long validUntil, LicenseType type, long allowance, long allowancePeriod){
-        this(uuid, userName, validFrom, validUntil, type, new AtomicLong(allowance), new AtomicLong(allowancePeriod));
+        String id,
+        LocalDate validFrom,
+        LocalDate validUntil,
+        int type,
+        LocalTime resetTime,
+        LocalTime clearTime,
+        long allowance
+) implements Comparable<ServerLicense> {
+    public static ServerLicense getDefault(ServerLicenseService service) {
+        return  new ServerLicense(
+                service.getNextAvailableId(),
+                LocalDate.now(),
+                LocalDate.now(),
+                0,
+                LocalTime.of(0,0,0),
+                LocalTime.of(0,0,0),
+                0
+        );
     }
 
-    public boolean isTimeValid() {
-        long now = System.currentTimeMillis() / 1000;
-        return now < validUntil && now > validFrom;
-    }
-
-    public boolean isValid(){
-        return isTimeValid() && allowance.get() > 0;
-    }
-
-    public boolean isPeriod(){
-        return period.get() > 0;
-    }
-
-    public String toStringFormattedWithoutUUID() {
+    public String toStringFormatted() {
         return  "\n" +
-                "userName=   " + userName + "\n" +
-                "validUntil= " + formatDate(validUntil) + "\n" +
-                "validFrom=  " + formatDate(validFrom) + "\n" +
-                "type=       " + Locales.getString(type.getNameKey()) + "\n" +
-                "allowance=  " + allowance + "\n" +
-                "period=     " + formatPeriodTime(period.get()) + "\n";
+                "id=         " + id + "\n" +
+                "validUntil= " + validUntil + "\n" +
+                "validFrom=  " + validFrom + "\n" +
+                "type=       " + PeriodType.parse(type, Locales::getString) + "\n" +
+                "resetTime= " + resetTime + "\n" +
+                "clearTime= " + clearTime + "\n" +
+                "allowance=  " + allowance;
     }
 
-    public static String formatDate(long sec) {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
-        String full = sdf.format(new Date(sec * 1000));
-
-        // 去掉前导"0000"或等效的空值部分
-        int firstNonZeroIndex = -1;
-        for (int i = 0; i < full.length(); i++) {
-            if (full.charAt(i) != '0') {
-                firstNonZeroIndex = i;
-                break;
+    /* =========================
+       有效性判断
+       ========================= */
+    public boolean isValid(LocalDateTime now) {
+        // 周期型不，
+        if (type != 0) {
+            LocalDate today = now.toLocalDate();
+            if (today.isBefore(validFrom) || today.isAfter(validUntil)) {
+                return false;
             }
-        }
 
-        if (firstNonZeroIndex == -1) {
-            // 全部是0
-            return "000000"; // HHmmss 全 0
-        }
+            int dayCode = switch (now.getDayOfWeek()) {
+                case MONDAY    -> PeriodType.MONDAY.getCode();
+                case TUESDAY   -> PeriodType.TUESDAY.getCode();
+                case WEDNESDAY -> PeriodType.WEDNESDAY.getCode();
+                case THURSDAY  -> PeriodType.THURSDAY.getCode();
+                case FRIDAY    -> PeriodType.FRIDAY.getCode();
+                case SATURDAY  -> PeriodType.SATURDAY.getCode();
+                case SUNDAY    -> PeriodType.SUNDAY.getCode();
+            };
 
-        return full.substring(firstNonZeroIndex);
+            return (type & dayCode) != 0;
+        }
+        // 单次型
+        LocalDateTime from = LocalDateTime.of(validFrom, resetTime);
+        LocalDateTime until = LocalDateTime.of(validUntil, clearTime);
+
+        return !now.isBefore(from) && !now.isAfter(until);
     }
 
-    public static long fromFormatDate(String date) {
-        String trimmed = date == null ? "" : date.trim();
-        if (trimmed.length() > 14) return -1; // 太长不合法
+    /* =========================
+       排序逻辑（纯比较）
+       ========================= */
+    @Override
+    public int compareTo(ServerLicense other) {
 
-        Calendar cal = Calendar.getInstance();
-        cal.set(Calendar.MILLISECOND, 0);
+        LocalDateTime now = LocalDateTime.now();
 
-        // 默认用当前日期补齐年/月/日
-        int year = cal.get(Calendar.YEAR);
-        int month = cal.get(Calendar.MONTH) + 1; // Calendar 月份从 0 开始
-        int day = cal.get(Calendar.DAY_OF_MONTH);
-        int hour = 0, minute = 0, second = 0;
+        boolean thisPeriodic = this.type != 0;
+        boolean otherPeriodic = other.type != 0;
 
-        try {
-            int len = trimmed.length();
-
-            // 从后向前填充
-            int idx = len;
-
-            if (idx >= 2) { // 秒
-                second = Integer.parseInt(trimmed.substring(idx - 2, idx));
-                idx -= 2;
-            }
-            if (idx >= 2) { // 分
-                minute = Integer.parseInt(trimmed.substring(idx - 2, idx));
-                idx -= 2;
-            }
-            if (idx >= 2) { // 时
-                hour = Integer.parseInt(trimmed.substring(idx - 2, idx));
-                idx -= 2;
-            }
-            if (idx >= 2) { // 日
-                day = Integer.parseInt(trimmed.substring(idx - 2, idx));
-                idx -= 2;
-            }
-            if (idx >= 2) { // 月
-                month = Integer.parseInt(trimmed.substring(idx - 2, idx));
-                idx -= 2;
-            }
-            if (idx >= 4) { // 年
-                year = Integer.parseInt(trimmed.substring(idx - 4, idx));
-                idx -= 4;
-            }
-
-            cal.set(Calendar.YEAR, year);
-            cal.set(Calendar.MONTH, month - 1);
-            cal.set(Calendar.DAY_OF_MONTH, day);
-            cal.set(Calendar.HOUR_OF_DAY, hour);
-            cal.set(Calendar.MINUTE, minute);
-            cal.set(Calendar.SECOND, second);
-
-            return cal.getTimeInMillis() / 1000;
-        } catch (Exception e) {
-            return -1;
+        /* 规则 1：周期型优先 */
+        if (thisPeriodic != otherPeriodic) {
+            return thisPeriodic ? -1 : 1;
         }
+
+        boolean thisValid = this.isValid(now);
+        boolean otherValid = other.isValid(now);
+
+        /* 规则 2：有效优先 */
+        if (thisValid != otherValid) {
+            return thisValid ? -1 : 1;
+        }
+
+    /* =========================
+       周期型对象比较
+       ========================= */
+        if (thisPeriodic) {
+
+            int clearCompare = this.clearTime.compareTo(other.clearTime);
+            if (clearCompare != 0) {
+                return clearCompare;
+            }
+
+            int untilCompare = this.validUntil.compareTo(other.validUntil);
+            if (untilCompare != 0) {
+                return untilCompare;
+            }
+
+            /* 兜底：licenseId */
+            return this.id.compareTo(other.id);
+        }
+
+    /* =========================
+       单次型对象比较
+       ========================= */
+        LocalDateTime thisEnd =
+                LocalDateTime.of(this.validUntil, this.clearTime);
+        LocalDateTime otherEnd =
+                LocalDateTime.of(other.validUntil, other.clearTime);
+
+        int endCompare = thisEnd.compareTo(otherEnd);
+        if (endCompare != 0) {
+            return endCompare;
+        }
+
+        /* 兜底：licenseId */
+        return this.id.compareTo(other.id);
     }
-
-    public static String formatPeriodTime(long sec) {
-        if (sec <= 0) return "-1";
-
-        long years = sec / (365L * 24 * 3600);
-        sec %= (365L * 24 * 3600);
-        long months = sec / (30L * 24 * 3600);
-        sec %= (30L * 24 * 3600);
-        long days = sec / (24 * 3600);
-        sec %= (24 * 3600);
-        long hours = sec / 3600;
-        sec %= 3600;
-        long minutes = sec / 60;
-        sec %= 60;
-
-        String full = String.format("%04d%02d%02d%02d%02d%02d",
-                years, months, days, hours, minutes, sec);
-
-        // 找到第一个非零字段的起始索引
-        int firstNonZeroIndex = 0;
-        int[] fieldWidths = {4, 2, 2, 2, 2, 2}; // 年、月、日、时、分、秒
-        int pos = 0;
-        for (int width : fieldWidths) {
-            String field = full.substring(pos, pos + width);
-            if (!field.equals("0".repeat(width))) {
-                break; // 遇到非零字段，停止
-            }
-            pos += width; // 跳过当前字段
-        }
-        firstNonZeroIndex = pos;
-
-        return full.substring(firstNonZeroIndex);
-    }
-
-    public static long fromFormatPeriodTime(String time) {
-        String trimmed = time == null ? "" : time.trim();
-        if(Long.parseLong(trimmed) < 0) return -1;
-        if (trimmed.length() > 14) {
-            throw new IllegalArgumentException("Invalid period time: " + trimmed);
-        }
-
-        int years = 0, months = 0, days = 0, hours = 0, minutes = 0, seconds = 0;
-
-        try {
-            int idx = trimmed.length();
-            if (idx >= 2) { // 秒
-                seconds = Integer.parseInt(trimmed.substring(idx - 2, idx));
-                idx -= 2;
-            }
-            if (idx >= 2) { // 分
-                minutes = Integer.parseInt(trimmed.substring(idx - 2, idx));
-                idx -= 2;
-            }
-            if (idx >= 2) { // 时
-                hours = Integer.parseInt(trimmed.substring(idx - 2, idx));
-                idx -= 2;
-            }
-            if (idx >= 2) { // 日
-                days = Integer.parseInt(trimmed.substring(idx - 2, idx));
-                idx -= 2;
-            }
-            if (idx >= 2) { // 月
-                months = Integer.parseInt(trimmed.substring(idx - 2, idx));
-                idx -= 2;
-            }
-            if (idx >= 4) { // 年
-                years = Integer.parseInt(trimmed.substring(idx - 4, idx));
-                idx -= 4;
-            }
-
-            long totalSeconds = 0;
-            totalSeconds += (long) years * 365 * 24 * 3600;
-            totalSeconds += (long) months * 30 * 24 * 3600;
-            totalSeconds += (long) days * 24 * 3600;
-            totalSeconds += (long) hours * 3600;
-            totalSeconds += (long) minutes * 60;
-            totalSeconds += seconds;
-
-            return totalSeconds;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid period time: " + trimmed);
-        }
-    }
-
 
 }

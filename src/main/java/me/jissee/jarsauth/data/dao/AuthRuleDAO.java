@@ -1,20 +1,23 @@
 package me.jissee.jarsauth.data.dao;
 
+import me.jissee.jarsauth.data.ConnectionProvider;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AuthProfileDAO implements DAO {
-    private final Connection connection;
+public class AuthRuleDAO implements DAO {
+    private final ConnectionProvider provider;
 
-    public AuthProfileDAO(Connection connection) {
-        this.connection = connection;
+    public AuthRuleDAO(ConnectionProvider provider) {
+        this.provider = provider;
         initTable();
     }
 
     public List<String> findRulesByGroup(String groupName) {
         String sql = "SELECT auth_rule FROM auth_profile WHERE group_name = ? ORDER BY auth_rule";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, groupName);
             ResultSet result = statement.executeQuery();
             List<String> rules = new ArrayList<>();
@@ -29,7 +32,8 @@ public class AuthProfileDAO implements DAO {
 
     public List<String> getAllGroups() {
         String sql = "SELECT DISTINCT(group_name) FROM auth_profile ORDER BY group_name";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             ResultSet result = statement.executeQuery();
             List<String> rules = new ArrayList<>();
             while (result.next()) {
@@ -43,7 +47,8 @@ public class AuthProfileDAO implements DAO {
 
     public void insertRules(String groupName, List<String> rules) {
         String sql = "INSERT OR IGNORE INTO auth_profile (group_name, auth_rule) VALUES (?, ?)";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             for (String rule : rules) {
                 statement.setString(1, groupName);
                 statement.setString(2, rule);
@@ -57,7 +62,8 @@ public class AuthProfileDAO implements DAO {
 
     public void changeRule(String groupName, String oldRule, String newRule) {
         String sql = "UPDATE auth_profile SET auth_rule = ? WHERE group_name = ? AND auth_rule = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, newRule);
             statement.setString(2, groupName);
             statement.setString(3, oldRule);
@@ -69,7 +75,8 @@ public class AuthProfileDAO implements DAO {
 
     public void removeRule(String groupName, String rule) {
         String sql = "DELETE FROM auth_profile WHERE group_name = ? AND auth_rule = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, groupName);
             statement.setString(2, rule);
             statement.executeUpdate();
@@ -80,7 +87,8 @@ public class AuthProfileDAO implements DAO {
 
     public void removeGroup(String groupName) {
         String sql = "DELETE FROM auth_profile WHERE group_name = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, groupName);
             statement.executeUpdate();
         } catch (SQLException e) {
@@ -90,8 +98,8 @@ public class AuthProfileDAO implements DAO {
 
 
     @Override
-    public Connection getConnection() {
-        return connection;
+    public Connection getConnection() throws SQLException {
+        return provider.getConnection();
     }
 
     @Override

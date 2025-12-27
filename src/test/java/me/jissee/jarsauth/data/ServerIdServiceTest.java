@@ -16,7 +16,7 @@ class ServerIdServiceTest {
     @BeforeEach
     void setUp() {
         // 使用内存数据库初始化 DataManager
-        dataManager = new DataManager(false, true);
+        dataManager = new DataManager("memory:", true);
         service = dataManager.getService(ServerIdService.class);
     }
 
@@ -40,7 +40,7 @@ class ServerIdServiceTest {
             .execute("INSERT INTO server_id (value) VALUES ('" + preexisting.toString() + "');");
 
         // 重新获取服务以避免缓存
-        dataManager = new DataManager(true, true);
+        dataManager = new DataManager("memory:", true);
         dataManager.getConnection().createStatement()
             .execute("INSERT INTO server_id (value) VALUES ('" + preexisting.toString() + "');");
         ServerIdService newService = dataManager.getService(ServerIdService.class);

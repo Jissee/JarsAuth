@@ -2,24 +2,28 @@ package me.jissee.jarsauth.data.dao;
 
 import me.jissee.jarsauth.data.ConnectionProvider;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-public class AccGroupDAO implements DAO {
+public class LicenseGroupDAO implements DAO {
     private final ConnectionProvider provider;
 
-    public AccGroupDAO(ConnectionProvider provider) {
+    public LicenseGroupDAO(ConnectionProvider provider) {
         this.provider = provider;
         initTable();
     }
-
-    public List<String> getAllGroupNames() {
-        String sql = "SELECT group_name FROM acc_group ORDER BY group_name";
+    public Set<String> getAllGroupNames() {
+        String sql = "SELECT group_name FROM license_group ORDER BY group_name;";
         try (Connection conn = getConnection();
              PreparedStatement statement = conn.prepareStatement(sql);
              ResultSet rs = statement.executeQuery()) {
-            List<String> groups = new ArrayList<>();
+            Set<String> groups = new HashSet<>();
             while (rs.next()) {
                 groups.add(rs.getString("group_name"));
             }
@@ -30,7 +34,7 @@ public class AccGroupDAO implements DAO {
     }
 
     public void insertGroup(String name) {
-        String sql = "INSERT INTO acc_group (group_name) VALUES (?)";
+        String sql = "INSERT INTO license_group (group_name) VALUES (?);";
         try (Connection conn = getConnection();
              PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, name);
@@ -41,7 +45,7 @@ public class AccGroupDAO implements DAO {
     }
 
     public void deleteGroup(String name) {
-        String sql = "DELETE FROM acc_group WHERE group_name = ?";
+        String sql = "DELETE FROM license_group WHERE group_name = ?;";
         try (Connection conn = getConnection();
              PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, name);
@@ -52,7 +56,7 @@ public class AccGroupDAO implements DAO {
     }
 
     public void renameGroup(String oldName, String newName) {
-        String sql = "UPDATE acc_group SET group_name = ? WHERE group_name = ?";
+        String sql = "UPDATE license_group SET group_name = ? WHERE group_name = ?;";
         try (Connection conn = getConnection();
              PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, newName);
@@ -63,7 +67,6 @@ public class AccGroupDAO implements DAO {
         }
     }
 
-
     @Override
     public Connection getConnection() throws SQLException {
         return provider.getConnection();
@@ -72,11 +75,11 @@ public class AccGroupDAO implements DAO {
     @Override
     public String[] getDefSQL() {
         return new String[]{
-            """
-            CREATE TABLE IF NOT EXISTS acc_group (
-                group_name TEXT PRIMARY KEY
-            );
-            """
+        """
+        CREATE TABLE IF NOT EXISTS license_group (
+            group_name TEXT PRIMARY KEY
+        );
+        """
         };
     }
 }

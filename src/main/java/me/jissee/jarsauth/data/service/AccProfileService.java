@@ -1,17 +1,17 @@
 package me.jissee.jarsauth.data.service;
 
+import me.jissee.jarsauth.data.ConnectionProvider;
 import me.jissee.jarsauth.data.model.AcceptedDetail;
 import me.jissee.jarsauth.data.dao.AccGroupDAO;
-import me.jissee.jarsauth.data.dao.AccInfoDAO;
-import me.jissee.jarsauth.data.model.AccInfoEntry;
+import me.jissee.jarsauth.data.dao.AccFileInfoDAO;
+import me.jissee.jarsauth.data.model.AccFileInfoEntry;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
 import java.util.List;
 
-public class AcceptedDetailService implements Service {
+public class AccProfileService implements Service {
     private final AccGroupDAO groupDAO;
-    private final AccInfoDAO infoDAO;
+    private final AccFileInfoDAO infoDAO;
 
     private AcceptedDetail buffer;
     private final Object bufferLock = new Object();
@@ -21,9 +21,9 @@ public class AcceptedDetailService implements Service {
         infoDAO.initTable();
     }
 
-    public AcceptedDetailService(Connection connection) {
-        this.groupDAO = new AccGroupDAO(connection);
-        this.infoDAO = new AccInfoDAO(connection);
+    public AccProfileService(ConnectionProvider provider) {
+        this.groupDAO = new AccGroupDAO(provider);
+        this.infoDAO = new AccFileInfoDAO(provider);
     }
 
     public AcceptedDetail createNewDetail() {
@@ -41,13 +41,17 @@ public class AcceptedDetailService implements Service {
         return infoDAO.getRegisteredAccGroupNames();
     }
 
+    public List<String> getAllFileNames(String groupName){
+        return infoDAO.getAllFileNames(groupName);
+    }
+
     public AcceptedDetail getGroup(String group) {
         if (!groupDAO.getAllGroupNames().contains(group)) {
             return new AcceptedDetail(group);
         }
-        List<AccInfoEntry> entries = infoDAO.getAllEntries(group);
+        List<AccFileInfoEntry> entries = infoDAO.getAllEntries(group);
         AcceptedDetail detail = new AcceptedDetail(group);
-        for (AccInfoEntry entry : entries) {
+        for (AccFileInfoEntry entry : entries) {
             if ("folder".equals(entry.value())) {
                 detail.addFolder(entry.key());
             } else {
@@ -58,17 +62,17 @@ public class AcceptedDetailService implements Service {
     }
 
     public AcceptedDetail getAllFromPath(String group, String path) {
-        List<AccInfoEntry> exactEntries = infoDAO.getEntriesByKey(group, path);
+        List<AccFileInfoEntry> exactEntries = infoDAO.getEntriesByKey(group, path);
         if (!exactEntries.isEmpty()) {
-            AccInfoEntry first = exactEntries.get(0);
+            AccFileInfoEntry first = exactEntries.get(0);
             if (first.value().length() == 64) {
                 throw new IllegalArgumentException("Cannot use * with a file.");
             }
         }
 
-        List<AccInfoEntry> prefixEntries = infoDAO.getEntriesByPrefix(group, path);
+        List<AccFileInfoEntry> prefixEntries = infoDAO.getEntriesByPrefix(group, path);
         AcceptedDetail result = new AcceptedDetail(group);
-        for (AccInfoEntry e : prefixEntries) {
+        for (AccFileInfoEntry e : prefixEntries) {
             if (e.value().length() == 64) {
                 result.addFile(e.key(), e.value());
             } else {
@@ -79,12 +83,12 @@ public class AcceptedDetailService implements Service {
     }
 
     public AcceptedDetail getExactFromPath(String group, String path) {
-        List<AccInfoEntry> exactEntries = infoDAO.getEntriesByKey(group, path);
+        List<AccFileInfoEntry> exactEntries = infoDAO.getEntriesByKey(group, path);
         if (exactEntries.isEmpty()) {
             return new AcceptedDetail(group);
         }
 
-        AccInfoEntry first = exactEntries.get(0);
+        AccFileInfoEntry first = exactEntries.get(0);
         if (first.value().length() == 64) {
             AcceptedDetail detail = new AcceptedDetail(group);
             detail.addFile(first.key(), first.value());
@@ -93,9 +97,9 @@ public class AcceptedDetailService implements Service {
 
         int slashCount = (int) path.chars().filter(ch -> ch == '/').count();
 
-        List<AccInfoEntry> entries = infoDAO.getEntriesByPrefixWithDepth(group, path, slashCount + 1);
+        List<AccFileInfoEntry> entries = infoDAO.getEntriesByPrefixWithDepth(group, path, slashCount + 1);
         AcceptedDetail result = new AcceptedDetail(group);
-        for (AccInfoEntry e : entries) {
+        for (AccFileInfoEntry e : entries) {
             if (e.value().length() == 64) {
                 result.addFile(e.key(), e.value());
             } else {

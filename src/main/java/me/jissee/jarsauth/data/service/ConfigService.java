@@ -1,6 +1,7 @@
 package me.jissee.jarsauth.data.service;
 
 import me.jissee.jarsauth.config.ConfigKey;
+import me.jissee.jarsauth.data.ConnectionProvider;
 import me.jissee.jarsauth.data.dao.ConfigDAO;
 import org.slf4j.LoggerFactory;
 
@@ -12,8 +13,8 @@ public class ConfigService implements Service {
 
     private final ConfigDAO dao;
 
-    public ConfigService(Connection connection) {
-        this.dao = new ConfigDAO(connection);
+    public ConfigService(ConnectionProvider provider) {
+        this.dao = new ConfigDAO(provider);
     }
 
     @Override

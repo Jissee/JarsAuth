@@ -1,5 +1,6 @@
 package me.jissee.jarsauth.data.service;
 
+import me.jissee.jarsauth.data.ConnectionProvider;
 import me.jissee.jarsauth.data.dao.ServerIdDAO;
 import me.jissee.jarsauth.data.model.AcceptedDetail;
 
@@ -10,8 +11,8 @@ import java.util.UUID;
 public class ServerIdService implements Service {
     private ServerIdDAO dao;
 
-    public ServerIdService(Connection connection) {
-        this.dao = new ServerIdDAO(connection);
+    public ServerIdService(ConnectionProvider provider) {
+        this.dao = new ServerIdDAO(provider);
     }
 
     public UUID getOrCreateServerId() {

@@ -13,7 +13,7 @@ Configuration Item Description
 
 [setting-client-auth.json] Client Authentication
     Each client is assigned an ID when it connects to the server for the first time.
-    If the client's ID does not match the player's name, the connection will be rejected.
+    If the client's ID does not match the player's name, the provider will be rejected.
 
     (boolean) "enabled": false
         Whether to enable this feature
@@ -37,7 +37,7 @@ Configuration Item Description
         5. The configuration file [setting-file-checksum.json] will be generated in the save folder. Read the instructions carefully and modify the configuration;
         6. After completion, run the server command /jarsauth reload to reload the configuration. Any subsequent changes must be reloaded with this command to take effect;
         7. The client can now connect to the server, and no further configuration is required on the client side.
-        8. To reject a client's connection, delete the corresponding [acc-x.json] file.
+        8. To reject a client's provider, delete the corresponding [acc-x.json] file.
         9. [Note] Verification may fail due to network fluctuations. Reconnecting should resolve this.
 
     (boolean) "enabled": false
@@ -66,7 +66,7 @@ Configuration Item Description
         (seconds) The client will be disconnected if no verification message is received within this time
 
 [setting-server-license.json] Server License
-    Manage client connection time using a server-side license.
+    Manage client provider time using a server-side license.
     The mod file [JarsAuth-*.jar] will be automatically copied to the server save directory when the server starts.
     Double-click to run and open the server license management interface.
     File -> New (Insert key) to create a new license and open the edit window. Enter information and save.

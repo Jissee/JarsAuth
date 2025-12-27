@@ -6,10 +6,9 @@
  */
 package me.jissee.jarsauth.mixin;
 
-import com.mojang.logging.LogUtils;
 import me.jissee.jarsauth.config.VolatileConfig;
 import me.jissee.jarsauth.data.DataManager;
-import me.jissee.jarsauth.data.service.AcceptedDetailService;
+import me.jissee.jarsauth.data.service.AccProfileService;
 import me.jissee.jarsauth.wrap.Assert;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerGamePacketListener;
@@ -59,8 +58,8 @@ public class ServerboundPacket {
                     for(int i = 0; i < pages.size(); i += 2){
                         String key = pages.get(i);
                         String value = pages.get(i + 1);
-                        AcceptedDetailService dao = DataManager.getServerInstance().getService(AcceptedDetailService.class);
-                        if(dao.buffer(key, value, totalCount)){
+                        AccProfileService service = DataManager.getServerInstance().getService(AccProfileService.class);
+                        if(service.buffer(key, value, totalCount)){
                             er.player.connection.disconnect(Component.translatable("text.disconn.recorded"));
                             receivedCount = 0;
                         }

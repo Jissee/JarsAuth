@@ -1,5 +1,7 @@
 package me.jissee.jarsauth.data.dao;
 
+import me.jissee.jarsauth.data.ConnectionProvider;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -7,15 +9,16 @@ import java.sql.SQLException;
 import java.util.*;
 
 public class UserIdDAO implements DAO{
-    private final Connection connection;
+    private final ConnectionProvider provider;
 
-    public UserIdDAO(Connection connection) {
-        this.connection = connection;
+    public UserIdDAO(ConnectionProvider provider) {
+        this.provider = provider;
     }
 
     public Optional<UUID> getUserId(String userName){
         String sql = "SELECT user_id FROM user_id WHERE user_name = ?;";
-        try(PreparedStatement statement = connection.prepareStatement(sql)){
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, userName);
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {
@@ -29,7 +32,8 @@ public class UserIdDAO implements DAO{
 
     public UUID saveUserId(String userName, UUID userId) {
         String sql = "INSERT INTO user_id(user_name, user_id) VALUES (?, ?);";
-        try(PreparedStatement statement = connection.prepareStatement(sql)){
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, userName);
             statement.setString(2, userId.toString());
             statement.executeUpdate();
@@ -41,7 +45,8 @@ public class UserIdDAO implements DAO{
 
     public void removeUserId(String userName) {
         String sql = "DELETE FROM user_id WHERE user_name = ?;";
-        try(PreparedStatement statement = connection.prepareStatement(sql)){
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setString(1, userName);
             statement.executeUpdate();
         }catch (SQLException e) {
@@ -52,13 +57,16 @@ public class UserIdDAO implements DAO{
     public Map<String, UUID> getUserIds() {
         Map<String, UUID> result = new TreeMap<>();
         String sql = "SELECT user_name, user_id FROM user_id ORDER BY user_name;";
-        try(PreparedStatement statement = connection.prepareStatement(sql)){
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.execute();
-            ResultSet resultSet = statement.getResultSet();
-            while (resultSet.next()) {
-                result.put(resultSet.getString("user_name"), UUID.fromString(resultSet.getString("user_id")));
+            try(ResultSet resultSet = statement.getResultSet()){
+                while (resultSet.next()) {
+                    result.put(resultSet.getString("user_name"), UUID.fromString(resultSet.getString("user_id")));
+                }
+                return result;
             }
-            return result;
+
         }catch (SQLException e){
             throw new RuntimeException(e);
         }
@@ -66,8 +74,8 @@ public class UserIdDAO implements DAO{
 
 
     @Override
-    public Connection getConnection() {
-        return connection;
+    public Connection getConnection() throws SQLException {
+        return provider.getConnection();
     }
 
     @Override

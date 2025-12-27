@@ -1,17 +1,17 @@
 package me.jissee.jarsauth.data.service;
 
-import me.jissee.jarsauth.data.dao.AuthProfileDAO;
+import me.jissee.jarsauth.data.ConnectionProvider;
+import me.jissee.jarsauth.data.dao.AuthRuleDAO;
 import me.jissee.jarsauth.data.model.AcceptedDetail;
-import me.jissee.jarsauth.data.model.AuthProfile;
+import me.jissee.jarsauth.data.model.AuthRuleEntry;
 
-import java.sql.Connection;
 import java.util.*;
 
-public class AuthProfileService implements Service {
-    private final AuthProfileDAO dao;
+public class AuthRuleService implements Service {
+    private final AuthRuleDAO dao;
 
-    public AuthProfileService(Connection connection) {
-        this.dao = new AuthProfileDAO(connection);
+    public AuthRuleService(ConnectionProvider provider) {
+        this.dao = new AuthRuleDAO(provider);
     }
 
     public List<String> getAllGroups(){
@@ -20,33 +20,33 @@ public class AuthProfileService implements Service {
 
 
 
-    /** 获取原始 profile（不展开子集） */
-    public AuthProfile getUnflattenedProfile(String groupName) {
+    /** 获取原始 rule（不展开子集） */
+    public AuthRuleEntry getUnflattenedRuleEntry(String groupName) {
         List<String> rules = dao.findRulesByGroup(groupName);
-        return new AuthProfile(groupName, rules);
+        return new AuthRuleEntry(groupName, rules);
     }
 
-    public AuthProfile getUnflattenedProfile(AcceptedDetail detail) {
-        return getUnflattenedProfile(detail.groupName());
+    public AuthRuleEntry getUnflattenedRuleEntry(AcceptedDetail detail) {
+        return getUnflattenedRuleEntry(detail.groupName());
     }
 
-    public AuthProfile getFlattenProfile(AcceptedDetail detail) {
-        return getFlattenProfile(detail.groupName());
+    public AuthRuleEntry getFlattenRuleEntry(AcceptedDetail detail) {
+        return getFlattenRuleEntry(detail.groupName());
     }
 
     // 获取递归展开后的 AuthProfile 对象
-    public AuthProfile getFlattenProfile(String groupName) {
+    public AuthRuleEntry getFlattenRuleEntry(String groupName) {
         Set<String> visited = new HashSet<>();
         LinkedHashSet<String> result = new LinkedHashSet<>();
         collectRules(groupName, result, visited);
-        return new AuthProfile(groupName, new ArrayList<>(result));
+        return new AuthRuleEntry(groupName, new ArrayList<>(result));
     }
 
     private void collectRules(String groupName, Set<String> output, Set<String> visited) {
         if (!visited.add(groupName)) return;
 
-        AuthProfile profile = getUnflattenedProfile(groupName);
-        for (String rule : profile.rules()) {
+        AuthRuleEntry ruleEntry = getUnflattenedRuleEntry(groupName);
+        for (String rule : ruleEntry.rules()) {
             if (rule.startsWith("&")) {
                 String subset = rule.substring(1);
                 collectRules(subset, output, visited);
@@ -58,7 +58,7 @@ public class AuthProfileService implements Service {
 
 
 
-    public AuthProfile getTaggedFlattenProfile(String groupName) {
+    public AuthRuleEntry getTaggedFlattenRuleEntry(String groupName) {
         Map<String, LinkedHashSet<String>> ruleToTags = new LinkedHashMap<>();
         Set<String> visited = new HashSet<>();
         collectTaggedRules(groupName, new LinkedList<>(), groupName, ruleToTags, visited);
@@ -73,7 +73,7 @@ public class AuthProfileService implements Service {
                 result.add(rule + " (" + String.join(",", tags) + ")");
             }
         }
-        return new AuthProfile(groupName, result);
+        return new AuthRuleEntry(groupName, result);
     }
 
     private void collectTaggedRules(
@@ -86,9 +86,9 @@ public class AuthProfileService implements Service {
         if (!visited.add(currentGroup)) return;
 
         path.addLast(currentGroup);
-        AuthProfile profile = getUnflattenedProfile(currentGroup);
+        AuthRuleEntry ruleEntry = getUnflattenedRuleEntry(currentGroup);
 
-        for (String rule : profile.rules()) {
+        for (String rule : ruleEntry.rules()) {
             if (rule.startsWith("&")) {
                 String subset = rule.substring(1);
                 collectTaggedRules(subset, path, rootGroup, ruleToTags, visited);
@@ -126,10 +126,9 @@ public class AuthProfileService implements Service {
 
 
 
-    public void saveProfile(AuthProfile profile) {
-        dao.insertRules(profile.groupName(), profile.rules());
+    public void saveRuleEntry(AuthRuleEntry ruleEntry) {
+        dao.insertRules(ruleEntry.groupName(), ruleEntry.rules());
     }
-
     public void changeRule(String groupName, String oldRule, String newRule) {
         dao.changeRule(groupName, oldRule, newRule);
     }

@@ -16,7 +16,7 @@ class UserIdServiceTest {
 
     @BeforeEach
     void setup() {
-        dataManager = new DataManager(false, true); // 使用内存数据库
+        dataManager = new DataManager("memory:", true); // 使用内存数据库
         userIdService = dataManager.getService(UserIdService.class);
     }
 

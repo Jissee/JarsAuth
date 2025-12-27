@@ -13,15 +13,15 @@ import java.sql.Statement;
 public interface DAO {
     default void initTable(){
         for(String def : getDefSQL()){
-            try {
-                getConnection().prepareStatement(def).execute();
+            try(Connection connection = getConnection()) {
+                connection.prepareStatement(def).execute();
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
         }
     }
 
-    Connection getConnection();
+    Connection getConnection() throws SQLException;
 
     String[] getDefSQL();
 }

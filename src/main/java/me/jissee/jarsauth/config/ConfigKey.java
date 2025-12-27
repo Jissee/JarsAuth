@@ -13,11 +13,6 @@ public enum ConfigKey {
     SERVER_LICENSE_AUTO_REMOVE("server-license.auto-remove", 0),
     SERVER_LICENSE_INTERVAL("server-license.interval", 20),
 
-    SERVER_LICENSE_LIMIT_TIME("server-license.limit.time", 0),
-    SERVER_LICENSE_LIMIT_WALK("server-license.limit.walk", 0),
-    SERVER_LICENSE_LIMIT_DIG("server-license.limit.dig", 0),
-    SERVER_LICENSE_LIMIT_PICK("server-license.limit.pick", 0),
-
     UI_LANGUAGE("ui.language", 0);
 
 

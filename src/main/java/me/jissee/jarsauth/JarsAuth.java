@@ -7,8 +7,10 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLLoader;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.launch.MixinBootstrap;
+import org.sqlite.SQLiteJDBCLoader;
 
 import java.io.File;
 import java.net.URISyntaxException;
@@ -19,8 +21,10 @@ public class JarsAuth {
     public static final String MODID = "jarsauth";
 
     public JarsAuth(FMLJavaModLoadingContext context) {
-        LoggerFactory.getLogger("JarsAuth").info("Mod Initializing");
+        Logger logger = LoggerFactory.getLogger("JarsAuth");
+        logger.info("Mod Initializing");
         try {
+            logger.info("Found JDBC: {}", SQLiteJDBCLoader.getVersion());
             Class.forName("org.sqlite.JDBC");
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);

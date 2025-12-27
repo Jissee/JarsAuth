@@ -59,35 +59,11 @@
                     </properties>
                     <border type="none"/>
                     <children>
-                      <component id="fdf2" class="javax.swing.JList" binding="ruleList">
+                      <component id="fdf2" class="javax.swing.JList" binding="accRuleList">
                         <constraints/>
-                        <properties/>
-                      </component>
-                    </children>
-                  </scrollpane>
-                  <component id="3065d" class="javax.swing.JLabel">
-                    <constraints>
-                      <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                      <gridbag weightx="1.0" weighty="0.0"/>
-                    </constraints>
-                    <properties>
-                      <text resource-bundle="ui" key="label.profile.rule.expanded"/>
-                    </properties>
-                  </component>
-                  <scrollpane id="6ef8c">
-                    <constraints>
-                      <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
-                      <gridbag weightx="1.0" weighty="1.0"/>
-                    </constraints>
-                    <properties>
-                      <preferredSize width="99999" height="99999"/>
-                      <requestFocusEnabled value="true"/>
-                    </properties>
-                    <border type="none"/>
-                    <children>
-                      <component id="1f204" class="javax.swing.JList" binding="ruleExpandedList">
-                        <constraints/>
-                        <properties/>
+                        <properties>
+                          <toolTipText resource-bundle="ui" key="label.profile.rule.rip"/>
+                        </properties>
                       </component>
                     </children>
                   </scrollpane>
@@ -121,7 +97,9 @@
                     <children>
                       <component id="8b5f8" class="javax.swing.JList" binding="accGroupList">
                         <constraints/>
-                        <properties/>
+                        <properties>
+                          <toolTipText resource-bundle="ui" key="label.profile.name.tip"/>
+                        </properties>
                       </component>
                     </children>
                   </scrollpane>
@@ -196,29 +174,162 @@
               </component>
             </children>
           </grid>
-          <grid id="11d38" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+          <grid id="11d38" layout-manager="GridLayoutManager" row-count="2" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
             <margin top="0" left="0" bottom="0" right="0"/>
             <constraints>
               <tabbedpane title-resource-bundle="ui" title-key="tab.server.license">
                 <tooltip resource-bundle="ui" key="tab.server.license.tip"/>
               </tabbedpane>
             </constraints>
-            <properties/>
+            <properties>
+              <requestFocusEnabled value="true"/>
+            </properties>
             <border type="none"/>
             <children>
-              <scrollpane id="e580f">
+              <grid id="d502" layout-manager="GridLayoutManager" row-count="2" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+                <margin top="0" left="0" bottom="0" right="0"/>
                 <constraints>
-                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                  <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
                 </constraints>
                 <properties/>
                 <border type="none"/>
                 <children>
-                  <component id="aaed" class="javax.swing.JTable" binding="serverLicenseTable">
-                    <constraints/>
+                  <scrollpane id="deb92" binding="licenseScrollPane">
+                    <constraints>
+                      <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                    </constraints>
                     <properties/>
+                    <border type="none"/>
+                    <children>
+                      <component id="aaed" class="javax.swing.JTable" binding="licenseTable">
+                        <constraints/>
+                        <properties/>
+                      </component>
+                    </children>
+                  </scrollpane>
+                  <component id="19f6e" class="javax.swing.JLabel">
+                    <constraints>
+                      <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                    </constraints>
+                    <properties>
+                      <text resource-bundle="ui" key="label.server.license.license"/>
+                    </properties>
                   </component>
                 </children>
-              </scrollpane>
+              </grid>
+              <grid id="27866" layout-manager="GridBagLayout">
+                <constraints>
+                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties/>
+                <border type="none"/>
+                <children>
+                  <component id="7234" class="javax.swing.JLabel">
+                    <constraints>
+                      <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="0.5" weighty="0.0"/>
+                    </constraints>
+                    <properties>
+                      <text resource-bundle="ui" key="label.server.license.group"/>
+                    </properties>
+                  </component>
+                  <scrollpane id="5e521">
+                    <constraints>
+                      <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="0.5" weighty="1.0"/>
+                    </constraints>
+                    <properties/>
+                    <border type="none"/>
+                    <children>
+                      <component id="4bd13" class="javax.swing.JList" binding="licenseGroupList">
+                        <constraints/>
+                        <properties>
+                          <toolTipText resource-bundle="ui" key="label.server.license.group.tip"/>
+                        </properties>
+                      </component>
+                    </children>
+                  </scrollpane>
+                  <scrollpane id="f210f">
+                    <constraints>
+                      <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="1.0" weighty="1.0"/>
+                    </constraints>
+                    <properties>
+                      <toolTipText resource-bundle="ui" key="label.server.license.rule.tip"/>
+                    </properties>
+                    <border type="none"/>
+                    <children>
+                      <component id="15938" class="javax.swing.JList" binding="licenseRuleList">
+                        <constraints/>
+                        <properties>
+                          <toolTipText resource-bundle="ui" key="label.server.license.rule.tip"/>
+                        </properties>
+                      </component>
+                    </children>
+                  </scrollpane>
+                  <scrollpane id="d6271" binding="licenseInstancePane">
+                    <constraints>
+                      <grid row="1" column="3" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="2.0" weighty="1.0"/>
+                    </constraints>
+                    <properties/>
+                    <border type="none">
+                      <title-color color="-2104859"/>
+                    </border>
+                    <children>
+                      <component id="c403c" class="javax.swing.JTable" binding="licenseInstanceTable">
+                        <constraints/>
+                        <properties/>
+                      </component>
+                    </children>
+                  </scrollpane>
+                  <component id="e2ce4" class="javax.swing.JLabel">
+                    <constraints>
+                      <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="1.0" weighty="0.0"/>
+                    </constraints>
+                    <properties>
+                      <text resource-bundle="ui" key="label.server.license.rule"/>
+                    </properties>
+                  </component>
+                  <component id="83ef3" class="javax.swing.JLabel">
+                    <constraints>
+                      <grid row="0" column="3" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="0.0" weighty="0.0"/>
+                    </constraints>
+                    <properties>
+                      <text value=""/>
+                    </properties>
+                  </component>
+                  <scrollpane id="74fea" binding="licenseInstanceHeaderPane">
+                    <constraints>
+                      <grid row="1" column="2" row-span="1" col-span="1" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="0.5" weighty="1.0"/>
+                    </constraints>
+                    <properties>
+                      <maximumSize width="10" height="10"/>
+                      <minimumSize width="1" height="1"/>
+                      <verticalScrollBarPolicy value="22"/>
+                    </properties>
+                    <border type="none"/>
+                    <children>
+                      <component id="dbab5" class="me.jissee.jarsauth.gui.JTableWithTooltip" binding="rowHeaderTable" custom-create="true">
+                        <constraints/>
+                        <properties/>
+                      </component>
+                    </children>
+                  </scrollpane>
+                  <component id="643c9" class="javax.swing.JLabel">
+                    <constraints>
+                      <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="0.5" weighty="0.0"/>
+                    </constraints>
+                    <properties>
+                      <text resource-bundle="ui" key="label.server.license.instance"/>
+                    </properties>
+                  </component>
+                </children>
+              </grid>
             </children>
           </grid>
           <grid id="837e5" layout-manager="GridLayoutManager" row-count="7" column-count="2" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
@@ -315,7 +426,7 @@
               </component>
             </children>
           </grid>
-          <grid id="738fe" layout-manager="GridLayoutManager" row-count="7" column-count="6" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+          <grid id="738fe" layout-manager="GridLayoutManager" row-count="4" column-count="6" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
             <margin top="0" left="0" bottom="500" right="0"/>
             <constraints>
               <tabbedpane title-resource-bundle="ui" title-key="tab.config">
@@ -499,72 +610,6 @@
                 </constraints>
                 <properties>
                   <toolTipText resource-bundle="ui" key="config.ui.language.tip"/>
-                </properties>
-              </component>
-              <component id="e4d09" class="javax.swing.JLabel">
-                <constraints>
-                  <grid row="3" column="4" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <text resource-bundle="ui" key="config.sl.limit.time"/>
-                </properties>
-              </component>
-              <component id="4794b" class="javax.swing.JLabel">
-                <constraints>
-                  <grid row="4" column="4" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <text resource-bundle="ui" key="config.sl.limit.walk"/>
-                </properties>
-              </component>
-              <component id="67f8e" class="javax.swing.JLabel">
-                <constraints>
-                  <grid row="5" column="4" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <text resource-bundle="ui" key="config.sl.limit.dig"/>
-                </properties>
-              </component>
-              <component id="70149" class="javax.swing.JLabel">
-                <constraints>
-                  <grid row="6" column="4" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <text resource-bundle="ui" key="config.sl.limit.pick"/>
-                </properties>
-              </component>
-              <component id="7575f" class="javax.swing.JCheckBox" binding="limitTimeBox">
-                <constraints>
-                  <grid row="3" column="5" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <selected value="false"/>
-                  <text value=""/>
-                </properties>
-              </component>
-              <component id="43a0" class="javax.swing.JCheckBox" binding="limitWalkBox">
-                <constraints>
-                  <grid row="4" column="5" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <text value=""/>
-                </properties>
-              </component>
-              <component id="19976" class="javax.swing.JCheckBox" binding="limitDigBox">
-                <constraints>
-                  <grid row="5" column="5" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <text value=""/>
-                </properties>
-              </component>
-              <component id="2ab4e" class="javax.swing.JCheckBox" binding="limitPickBox">
-                <constraints>
-                  <grid row="6" column="5" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <enabled value="true"/>
-                  <text value=""/>
                 </properties>
               </component>
             </children>
