@@ -5,6 +5,7 @@ import me.jissee.jarsauth.data.dao.LicenseGroupRuleDAO;
 import me.jissee.jarsauth.data.model.LicenseGroupRuleEntry;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class LicenseGroupRuleService implements Service {
     private final LicenseGroupRuleDAO dao;
@@ -18,7 +19,7 @@ public class LicenseGroupRuleService implements Service {
     /** 获取原始规则（不展开子组） */
     public LicenseGroupRuleEntry getUnflattenedRuleEntry(String groupName) {
         List<String> rules = dao.findRulesByGroup(groupName);
-        return new LicenseGroupRuleEntry(groupName, rules);
+        return new LicenseGroupRuleEntry(groupName, new HashSet<>(rules));
     }
 
     /** 获取递归展开后的规则（无 tag） */
@@ -26,7 +27,7 @@ public class LicenseGroupRuleService implements Service {
         Set<String> visited = new HashSet<>();
         LinkedHashSet<String> result = new LinkedHashSet<>();
         collectRules(groupName, result, visited);
-        return new LicenseGroupRuleEntry(groupName, new ArrayList<>(result));
+        return new LicenseGroupRuleEntry(groupName, result);
     }
 
     private void collectRules(String groupName, Set<String> output, Set<String> visited) {
@@ -55,7 +56,7 @@ public class LicenseGroupRuleService implements Service {
                 visited
         );
 
-        List<String> result = new ArrayList<>();
+        Set<String> result = new LinkedHashSet<>();
         for (Map.Entry<String, LinkedHashSet<String>> entry : ruleToTags.entrySet()) {
             if (entry.getValue().isEmpty()) {
                 result.add(entry.getKey());
@@ -66,7 +67,7 @@ public class LicenseGroupRuleService implements Service {
             }
         }
 
-        return new LicenseGroupRuleEntry(groupName, result.stream().sorted().toList());
+        return new LicenseGroupRuleEntry(groupName, result);
     }
 
     private void collectTaggedRules(
@@ -116,7 +117,7 @@ public class LicenseGroupRuleService implements Service {
 
     public void saveRuleEntry(LicenseGroupRuleEntry entry) {
         if(entry.groupName().equals("default")) {
-            dao.insertRules("default", entry.rules().stream().filter(s -> s.startsWith(":")).toList());
+            dao.insertRules("default", entry.rules().stream().filter(s -> s.startsWith(":")).collect(Collectors.toSet()));
         }else{
             dao.insertRules(entry.groupName(), entry.rules());
         }

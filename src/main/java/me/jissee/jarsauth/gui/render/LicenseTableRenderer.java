@@ -22,24 +22,34 @@ public class LicenseTableRenderer extends DefaultTableCellRenderer {
         super.getTableCellRendererComponent(
                 table, value, isSelected, hasFocus, row, column
         );
-        if(value instanceof LocalDate date){
+        if(value instanceof LocalDateWrap date){
             try{
                 LocalDate now = LocalDate.now();
-                if (date.isBefore(now)) {
-                    setForeground(Color.RED);
-                } else {
-                    setForeground(Color.GREEN);
+                if(date instanceof LocalDateWrap.From){
+                    if (date.get().isAfter(now)) {
+                        setForeground(Color.GREEN);
+                    } else {
+                        setForeground(Color.RED);
+                    }
+                }else{
+                    if (date.get().isBefore(now)) {
+                        setForeground(Color.RED);
+                    } else {
+                        setForeground(Color.GREEN);
+                    }
                 }
+
+
                 return this;
             }catch (DateTimeParseException e){
 
             }
         }
 
-        if(value instanceof LocalTime date){
+        if(value instanceof LocalTime time){
             try{
                 LocalTime now = LocalTime.now();
-                if (date.isBefore(now)) {
+                if (time.isBefore(now)) {
                     setForeground(Color.RED);
                 } else  {
                     setForeground(Color.GREEN);

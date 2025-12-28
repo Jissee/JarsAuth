@@ -16,7 +16,39 @@ public class ServerLicenseInstanceDAO implements DAO{
         initTable();
     }
 
-    public List<ServerLicenseInstance> getLicenseInstancesForGroup0(String groupName) {
+
+    public ServerLicenseInstance getLicenseInstance(String id, String playerName, String groupName, String groupChain) {
+        String sql =
+                 """
+                 SELECT remaining
+                 FROM server_license_instance
+                 WHERE license_id = ? AND player = ? AND group_name = ? AND group_chain = ?;
+                 """;
+        try (Connection conn = getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setString(1, id);
+            statement.setString(2, playerName);
+            statement.setString(3, groupName);
+            statement.setString(4, groupChain);
+            try(ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    return new ServerLicenseInstance(
+                            id,
+                            playerName,
+                            groupName,
+                            groupChain,
+                            rs.getLong("remaining")
+                    );
+                } else {
+                    return null;
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<ServerLicenseInstance> getLicenseInstancesForGroup(String groupName) {
         String sql =
                  """
                  SELECT player, license_id, group_name, group_chain, remaining
@@ -179,4 +211,5 @@ public class ServerLicenseInstanceDAO implements DAO{
         """
         };
     }
+
 }

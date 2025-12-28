@@ -1,9 +1,5 @@
 package me.jissee.jarsauth.data;
 
-import me.jissee.jarsauth.data.model.PeriodType;
-
-import java.sql.Date;
-import java.text.SimpleDateFormat;
 import java.time.*;
 
 public class TimeUtil {
@@ -11,25 +7,60 @@ public class TimeUtil {
         return LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() / 1000L;
     }
 
-    public static boolean isDateInRange(LocalDate now, LocalDate from, LocalDate until) {
-        return (now.isEqual(from) || now.isAfter(from))
-                && (now.isEqual(until) || now.isBefore(until));
+    // 格式："dd+hh:mm:ss""1+10:10:10"
+    public static long parseDuration(String duration) {
+        if (duration == null || duration.trim().isEmpty()) {
+            throw new IllegalArgumentException("duration is empty");
+        }
+
+        long days = 0;
+        String timePart = duration;
+
+        // 处理天数部分
+        if (duration.contains("+")) {
+            String[] daySplit = duration.split("\\+");
+            if (daySplit.length != 2) {
+                throw new IllegalArgumentException("Invalid duration format: " + duration);
+            }
+            days = Long.parseLong(daySplit[0]);
+            timePart = daySplit[1];
+        }
+
+        // 处理 hh:mm:ss
+        String[] timeSplit = timePart.split(":");
+        if (timeSplit.length != 3) {
+            throw new IllegalArgumentException("Invalid time format: " + duration);
+        }
+
+        long hours = Long.parseLong(timeSplit[0]);
+        long minutes = Long.parseLong(timeSplit[1]);
+        long seconds = Long.parseLong(timeSplit[2]);
+
+        return days * 86400
+                + hours * 3600
+                + minutes * 60
+                + seconds;
     }
 
-    public static boolean isWeekdayMatched(int type, DayOfWeek day) {
-        int dayCode = switch (day) {
-            case MONDAY    -> PeriodType.MONDAY.getCode();
-            case TUESDAY   -> PeriodType.TUESDAY.getCode();
-            case WEDNESDAY -> PeriodType.WEDNESDAY.getCode();
-            case THURSDAY  -> PeriodType.THURSDAY.getCode();
-            case FRIDAY    -> PeriodType.FRIDAY.getCode();
-            case SATURDAY  -> PeriodType.SATURDAY.getCode();
-            case SUNDAY    -> PeriodType.SUNDAY.getCode();
-        };
-        return (type & dayCode) != 0;
+
+    public static String formatDuration(long totalSeconds) {
+        if (totalSeconds < 0) {
+            throw new IllegalArgumentException("seconds must be >= 0");
+        }
+
+        long days = totalSeconds / 86400;
+        long remainder = totalSeconds % 86400;
+
+        long hours = remainder / 3600;
+        remainder %= 3600;
+
+        long minutes = remainder / 60;
+        long seconds = remainder % 60;
+
+        return String.format("%d+%02d:%02d:%02d",
+                days, hours, minutes, seconds);
+
     }
-
-
 
 
 }

@@ -2,6 +2,7 @@ package me.jissee.jarsauth.gui;
 
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
+import me.jissee.jarsauth.data.TimeUtil;
 import me.jissee.jarsauth.data.model.PeriodType;
 import me.jissee.jarsauth.data.model.ServerLicense;
 
@@ -10,6 +11,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.lang.reflect.Method;
+import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Map;
@@ -73,7 +75,7 @@ public class LicenseEditorWindow extends AbstractModWindow {
         validUntilText.setText(oldLicense.validUntil().toString());
         resetTimeText.setText(oldLicense.resetTime().toString());
         clearTimeText.setText(oldLicense.clearTime().toString());
-        allowanceText.setText(String.valueOf(oldLicense.allowance()));
+        allowanceText.setText(TimeUtil.formatDuration(oldLicense.allowance()));
 
         idText.addKeyListener(new KeyAdapter());
         validFromText.addKeyListener(new KeyAdapter());
@@ -146,7 +148,7 @@ public class LicenseEditorWindow extends AbstractModWindow {
                     parseType(),
                     LocalTime.parse(resetTimeText.getText()),
                     LocalTime.parse(clearTimeText.getText()),
-                    Long.parseLong(allowanceText.getText())
+                    TimeUtil.parseDuration(allowanceText.getText())
             );
             onConfirm.accept(newLicense);
             dispose();

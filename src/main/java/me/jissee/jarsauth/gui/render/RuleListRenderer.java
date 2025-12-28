@@ -20,7 +20,7 @@ public class RuleListRenderer extends DefaultListCellRenderer {
         Component c = super.getListCellRendererComponent(
                 list, value, index, isSelected, cellHasFocus);
 
-        if (!isSelected && value instanceof String text) {
+        if (value instanceof String text) {
             if (text.startsWith(":")) {
                 Set<String> set = provider.get();
                 int idx = text.lastIndexOf("(");

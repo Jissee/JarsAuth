@@ -46,7 +46,7 @@ public record ServerLicense(
        有效性判断
        ========================= */
     public boolean isValid(LocalDateTime now) {
-        // 周期型不，
+        // 周期型
         if (type != 0) {
             LocalDate today = now.toLocalDate();
             if (today.isBefore(validFrom) || today.isAfter(validUntil)) {
@@ -77,58 +77,29 @@ public record ServerLicense(
        ========================= */
     @Override
     public int compareTo(ServerLicense other) {
-
-        LocalDateTime now = LocalDateTime.now();
-
         boolean thisPeriodic = this.type != 0;
         boolean otherPeriodic = other.type != 0;
 
-        /* 规则 1：周期型优先 */
         if (thisPeriodic != otherPeriodic) {
             return thisPeriodic ? -1 : 1;
         }
 
-        boolean thisValid = this.isValid(now);
-        boolean otherValid = other.isValid(now);
-
-        /* 规则 2：有效优先 */
-        if (thisValid != otherValid) {
-            return thisValid ? -1 : 1;
-        }
-
-    /* =========================
-       周期型对象比较
-       ========================= */
         if (thisPeriodic) {
+            int c = this.clearTime.compareTo(other.clearTime);
+            if (c != 0) return c;
 
-            int clearCompare = this.clearTime.compareTo(other.clearTime);
-            if (clearCompare != 0) {
-                return clearCompare;
-            }
+            c = this.validUntil.compareTo(other.validUntil);
+            if (c != 0) return c;
 
-            int untilCompare = this.validUntil.compareTo(other.validUntil);
-            if (untilCompare != 0) {
-                return untilCompare;
-            }
-
-            /* 兜底：licenseId */
             return this.id.compareTo(other.id);
         }
 
-    /* =========================
-       单次型对象比较
-       ========================= */
-        LocalDateTime thisEnd =
-                LocalDateTime.of(this.validUntil, this.clearTime);
-        LocalDateTime otherEnd =
-                LocalDateTime.of(other.validUntil, other.clearTime);
+        LocalDateTime thisEnd = LocalDateTime.of(validUntil, clearTime);
+        LocalDateTime otherEnd = LocalDateTime.of(other.validUntil, other.clearTime);
 
-        int endCompare = thisEnd.compareTo(otherEnd);
-        if (endCompare != 0) {
-            return endCompare;
-        }
+        int c = thisEnd.compareTo(otherEnd);
+        if (c != 0) return c;
 
-        /* 兜底：licenseId */
         return this.id.compareTo(other.id);
     }
 

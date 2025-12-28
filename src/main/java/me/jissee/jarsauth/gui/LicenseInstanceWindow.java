@@ -3,6 +3,7 @@ package me.jissee.jarsauth.gui;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import me.jissee.jarsauth.data.TimeUtil;
 import me.jissee.jarsauth.data.model.ServerLicenseInstance;
 
 import javax.swing.*;
@@ -15,17 +16,43 @@ public class LicenseInstanceWindow extends AbstractModWindow {
     private JPanel panel1;
     private JButton cancelButton;
     private JButton confirmButton;
+    private JLabel userNameText;
+    private JLabel licenseIdText;
+    private JLabel groupNameText;
+    private JLabel groupChainText;
+    private JLabel allowanceLabel;
+    private JRadioButton setToButton;
+    private JTextField setToText;
+    private JRadioButton plusButton;
+    private JRadioButton minusButton;
+    private JTextField plusText;
+    private JTextField minusText;
     private ServerLicenseInstance oldInstance;
     private Consumer<ServerLicenseInstance> onConfirm;
 
     public LicenseInstanceWindow(String title, ServerLicenseInstance oldInstance, Consumer<ServerLicenseInstance> onConfirm) {
-        frame.setSize(500, 320);
+        frame.setSize(300, 320);
         this.title = title;
         this.oldInstance = oldInstance;
         this.onConfirm = onConfirm;
         frame.setTitle(getTitle());
         cancelButton.addActionListener(this::onCancel);
         confirmButton.addActionListener(this::onConfirm);
+
+        userNameText.setText(oldInstance.player());
+        licenseIdText.setText(oldInstance.licenseId());
+        groupNameText.setText(oldInstance.groupName());
+        groupChainText.setText(oldInstance.groupChain());
+        allowanceLabel.setText(TimeUtil.formatDuration(oldInstance.remaining()));
+        setToText.setText(TimeUtil.formatDuration(oldInstance.remaining()));
+        plusText.setText("0+00:00:00");
+        minusText.setText("0+00:00:00");
+
+        ButtonGroup buttonGroup = new ButtonGroup();
+        buttonGroup.add(setToButton);
+        buttonGroup.add(minusButton);
+        buttonGroup.add(plusButton);
+
     }
 
     private void onCancel(ActionEvent e) {
@@ -33,7 +60,21 @@ public class LicenseInstanceWindow extends AbstractModWindow {
     }
 
     private void onConfirm(ActionEvent e) {
-        this.onConfirm.accept(oldInstance);
+        try{
+            long remaining = oldInstance.remaining();
+            if(setToButton.isSelected()) {
+                remaining = TimeUtil.parseDuration(setToText.getText());
+            }else if(plusButton.isSelected()) {
+                remaining = remaining + TimeUtil.parseDuration(plusText.getText());
+            }else if(minusButton.isSelected()) {
+                remaining = remaining - TimeUtil.parseDuration(minusText.getText());
+            }
+            ServerLicenseInstance newInst = oldInstance.withRemaining(remaining);
+            this.onConfirm.accept(newInst);
+            dispose();
+        } catch (Exception ex) {
+            showError(ex.toString(), "");
+        }
     }
 
     @Override

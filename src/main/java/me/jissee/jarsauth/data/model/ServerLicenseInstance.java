@@ -7,9 +7,13 @@ public record ServerLicenseInstance(
         String groupChain,
         long remaining
 ) {
-    public static ServerLicenseInstance createNew(String licenseId, String userName, String groupName, String groupChain){
+    public static ServerLicenseInstance createNewEmpty(String licenseId, String userName, String groupName, String groupChain){
         return new ServerLicenseInstance(licenseId, userName, groupName, groupChain, 0);
     }
+    public ServerLicenseInstance withRemaining(long remaining){
+        return new ServerLicenseInstance(licenseId(), player(), groupName(), groupChain(), remaining);
+    }
+
     public String getTaggedId(){
         return nameTag(licenseId, groupChain);
     }

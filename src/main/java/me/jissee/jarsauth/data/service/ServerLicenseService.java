@@ -1,8 +1,6 @@
 package me.jissee.jarsauth.data.service;
 
-import com.sun.jna.platform.unix.solaris.LibKstat;
 import me.jissee.jarsauth.data.ConnectionProvider;
-import me.jissee.jarsauth.data.DataManager;
 import me.jissee.jarsauth.data.dao.ServerLicenseDAO;
 import me.jissee.jarsauth.data.dao.ServerLicenseInstanceDAO;
 import me.jissee.jarsauth.data.model.LicenseGroupRuleEntry;
@@ -10,15 +8,12 @@ import me.jissee.jarsauth.data.model.ServerLicense;
 import me.jissee.jarsauth.data.model.ServerLicenseInstance;
 import oshi.util.tuples.Pair;
 
-import java.time.DayOfWeek;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static me.jissee.jarsauth.data.TimeUtil.isDateInRange;
-import static me.jissee.jarsauth.data.TimeUtil.isWeekdayMatched;
 
 public class ServerLicenseService implements Service{
     private final ServerLicenseDAO licenseDao;
@@ -60,6 +55,10 @@ public class ServerLicenseService implements Service{
         return licenseDao.getLicense(id);
     }
 
+    public ServerLicenseInstance getLicenseInstance(String id, String playerName, String groupName, String groupChain){
+        return licenseInstanceDao.getLicenseInstance(id, playerName, groupName, groupChain);
+    }
+
     public void saveLicense(ServerLicense license) {
         if(isIdExist(license.id())){
             updateLicense(license.id(),  license);
@@ -79,31 +78,40 @@ public class ServerLicenseService implements Service{
 
 
     //Instances
-    public static List<Pair<String, String>> combineLicenseIdsAndGroupChain(List<String> licenses, List<String> groupChains) {
-        int x = licenses.size();
-        int y = groupChains.size();
-        if (x != y) {
+    public void saveInstances(List<ServerLicenseInstance> licenseInstances, boolean replaceExist) {
+        licenseInstanceDao.saveInstances(licenseInstances, replaceExist);
+    }
+
+    public List<Pair<String, String>> combineLicenseIdsAndGroupChain(
+            List<String> licenses,
+            List<String> groupChains
+    ) {
+
+        if (licenses.size() != groupChains.size()) {
             throw new IllegalArgumentException("count mismatch");
         }
+
         List<Pair<String, String>> result = new ArrayList<>();
-        for (int i = 0; i < x; i++) {
+        for (int i = 0; i < licenses.size(); i++) {
             result.add(new Pair<>(licenses.get(i), groupChains.get(i)));
         }
+
+        // 一次性加载所有 License
+        Map<String, ServerLicense> licenseMap = result.stream()
+                .map(Pair::getA)
+                .distinct()
+                .collect(Collectors.toMap(
+                        id -> id,
+                        this::getLicense
+                ));
+
+        // 使用内存数据排序
+        result.sort(Comparator.comparing(p -> licenseMap.get(p.getA()))
+        );
+
         return result;
     }
 
-    public void makeNewInstances(String groupName, List<Pair<String, String>> licensesWithGroupChains, List<String> playerNames) {
-        List<ServerLicenseInstance> newInstances = new ArrayList<>();
-        for (Pair<String, String> licenseWithGroupChain : licensesWithGroupChains) {
-            String id = licenseWithGroupChain.getA();
-            String groupChain = licenseWithGroupChain.getB();
-            for (String playerName : playerNames) {
-                ServerLicenseInstance sli = ServerLicenseInstance.createNew(id, playerName, groupName, groupChain);
-                newInstances.add(sli);
-            }
-        }
-        licenseInstanceDao.saveInstances(newInstances, false);
-    }
     //playerName:{"group (chain)": remaining}
     public Map<String, Map<String, Long>> getRemainingMatrixForGroup(String groupName) {
         List<ServerLicenseInstance> instances = licenseInstanceDao.getLicenseInstancesForGroup(groupName);
@@ -116,179 +124,317 @@ public class ServerLicenseService implements Service{
         return result;
     }
 
+
+
+
+    private static class InstancesHandler {
+        private final Map<String, List<ServerLicenseInstance>> groupMap;
+
+        public InstancesHandler(List<ServerLicenseInstance> unsorted) {
+            List<ServerLicenseInstance> instances = new ArrayList<>(unsorted);
+
+            // 按 groupName 分组
+            this.groupMap = instances.stream()
+                    .collect(Collectors.groupingBy(ServerLicenseInstance::groupName));
+        }
+
+        // 统计输入的所有对象中有那些不同的 groupName
+        public Set<String> groupNames() {
+            if (!groupMap.containsKey("default")) {
+                groupMap.put("default", new ArrayList<>());
+            }
+            return groupMap.keySet();
+        }
+
+        // 对所有输入对象进行索引，通过 groupName 获取所有组内根据 licenseId 分组的对象
+        // licenseId 可能重复，但 groupChain 不同，确保不同 groupChain 的实例在同一个列表中
+        public Map<String, List<ServerLicenseInstance>> instancesById(String groupName) {
+            List<ServerLicenseInstance> groupInstances = groupMap.getOrDefault(groupName, Collections.emptyList());
+
+            // 按 licenseId 分组
+            Map<String, List<ServerLicenseInstance>> byLicenseId = new HashMap<>();
+            for (ServerLicenseInstance instance : groupInstances) {
+                byLicenseId.computeIfAbsent(instance.licenseId(), k -> new ArrayList<>()).add(instance);
+            }
+
+            return byLicenseId;
+        }
+    }
+
     public boolean updateAndVerifyForPlayer(String playerName) {
-        Set<String> group = groupService.getAllGroupNames();
-        List<ServerLicenseInstance> instances = licenseInstanceDao.getLicenseInstancesForPlayer(playerName);
+        LocalDateTime lastUpdate = timeCacheService.getVolatile(playerName);
+        LocalDateTime now = LocalDateTime.now().withNano(0);
+
+        Set<String> groupNames = groupService.getAllGroupNames();
+        List<ServerLicenseInstance> updatedInstances = new LinkedList<>();
+        Map<String, Set<String>> taggedFlattenRulesByGroup = new HashMap<>();
+
+        for(String groupName : groupNames) {
+            LicenseGroupRuleEntry entry = groupRuleService.getTaggedFlattenRuleEntry(groupName);
+            taggedFlattenRulesByGroup.put(groupName, entry.rules());
+        }
+
+
+        List<ServerLicenseInstance> existInstances = licenseInstanceDao.getLicenseInstancesForPlayer(playerName);
+        InstancesHandler existInstancesHandler = new InstancesHandler(existInstances);
+
+        for(String groupName : groupNames) {
+            Map<String, List<ServerLicenseInstance>> existInstancesById = existInstancesHandler.instancesById(groupName);
+            updateForPlayerInGroup(
+                    groupName,
+                    playerName,
+                    existInstancesById,
+                    taggedFlattenRulesByGroup.get(groupName),
+                    lastUpdate,
+                    now,
+                    updatedInstances
+            );
+        }
+        licenseInstanceDao.saveInstances(updatedInstances, true);
+        updatedInstances.clear();
+
+        existInstances = licenseInstanceDao.getLicenseInstancesForPlayer(playerName);
+        existInstancesHandler = new InstancesHandler(existInstances);
+        if(lastUpdate == null) {
+            lastUpdate = now;
+        }
 
         boolean result = false;
-        for (String groupName : group) {
-            List<ServerLicenseInstance> instancesOfGroup = instances.stream()
-                    .filter(instance -> instance.groupName().equals(groupName))
-                    .toList();
-            result |= updateAndVerifyForPlayerInGroup(groupName, playerName, instancesOfGroup);
+        for(String groupName : existInstancesHandler.groupNames()) {
+            Map<String, List<ServerLicenseInstance>> existInstancesById = existInstancesHandler.instancesById(groupName);
+            result |= verifyForPlayerInGroup(
+                    groupName,
+                    playerName,
+                    existInstancesById,
+                    taggedFlattenRulesByGroup.get(groupName),
+                    lastUpdate,
+                    now,
+                    updatedInstances
+            );
         }
+        licenseInstanceDao.saveInstances(updatedInstances, true);
+        timeCacheService.setVolatile(playerName, now);
         return result;
     }
 
-    public boolean updateAndVerifyForPlayerInGroup(String groupName, String playerName, List<ServerLicenseInstance> instances) {
-        LicenseGroupRuleEntry entry = groupRuleService.getFlattenRuleEntry(groupName);
-        if(!entry.rules().contains(playerName) && Objects.equals(groupName, "default")) {
-            return false;
-        }
-        Set<String> licenseIds = entry.rules().stream()
-                .filter(s -> s.startsWith(":"))
-                .map(s -> s.substring(1))
-                .collect(Collectors.toSet());
-
-        final LocalDateTime now = LocalDateTime.now().withNano(0);
-
-        List<ServerLicense> sortedLicenses = licenseIds.stream()
-                .map(licenseDao::getLicense)
-                .filter(Objects::nonNull)
-                .sorted(ServerLicense::compareTo)
-                .filter(license -> license.isValid(now))
-                .toList();
-
-        List<String> sortedLicenseIds = sortedLicenses.stream().map(ServerLicense::id).toList();
-
-        TimeCacheService tcs = DataManager.getServerInstance().getService(TimeCacheService.class);
-
-        Optional<LocalDateTime> lastUpdatedOptional = tcs.get(playerName, "sl/" + groupName);
-        // -1: left behind
-        //  0: up to date
-        //  1: after now
-        int upToDateStatus = -1;
-        if(lastUpdatedOptional.isPresent()){
-            upToDateStatus = 0;
-        }
-        if(upToDateStatus == 0){
-            LocalDateTime lastUpdated = lastUpdatedOptional.get();
-            LocalDate lastUpdatedDate = lastUpdated.toLocalDate();
-            if(now.toLocalDate().isAfter(lastUpdatedDate)){
-                upToDateStatus = -1;
-            }else if(now.toLocalDate().isBefore(lastUpdatedDate)){
-                upToDateStatus = 1;
-            }
-        }
-        // left behind
-        if(upToDateStatus == -1){
-
-        }
-        // up to date
-        else if(upToDateStatus == 0){
-
-        }
-        // after now
-        else {
-
-        }
-        Duration duration = Duration.between(now, lastUpdated);
-
-        sortedLicenses.forEach(sortedLicense -> {
-
-        });
-
-        List<ServerLicenseInstance> sortedInstances = instances.stream()
-                .filter(instance -> instance.licenseId());
-
+    private void parseRules(Set<String> rules, Map<String, List<String>> licenseIds, Set<String> playersOfGroup) {
+        rules.forEach(s -> {
+                    if(s.startsWith(":")){
+                        String rule = s.substring(1);
+                        int idx = rule.lastIndexOf('(');
+                        int endIdx = rule.lastIndexOf(')');
+                        if (idx > 0 && endIdx > idx) {
+                            String licenseId = rule.substring(0, idx - 1);
+                            String groupChain = rule.substring(idx + 1, endIdx);
+                            licenseIds
+                                    .computeIfAbsent(licenseId, k -> new ArrayList<>())
+                                    .add(groupChain);
+                        }
+                    }else{
+                        int idx = s.lastIndexOf('(');
+                        if (idx > 0) {
+                            String playerName = s.substring(0, idx - 1);
+                            playersOfGroup.add(playerName);
+                        }else{
+                            playersOfGroup.add(s);
+                        }
+                    }
+                });
     }
 
-    private void updateGroup(String groupName, List<String> currentPlayers, boolean onlyCurrentPlayers) {
-        LicenseGroupRuleEntry entry = groupRuleService.getFlattenRuleEntry(groupName);
-        Set<String> licenseIds = entry.rules().stream().
-                filter(s -> s.startsWith(":"))
-                .map(s -> s.substring(1))
-                .collect(Collectors.toSet());
-
-        final LocalDateTime now = LocalDateTime.now().withNano(0);
-
-        List<ServerLicense> sortedLicenses = licenseIds.stream()
-                .map(licenseDao::getLicense)
-                .filter(Objects::nonNull)
-                .sorted(ServerLicense::compareTo)
-                .filter(license -> license.isValid(now))
-                .toList();
-
-        Map<String, ServerLicense> licensesById = new HashMap<>();
-        sortedLicenses.forEach(license -> licensesById.put(license.id(), license));
-
-        List<ServerLicenseInstance> instances = licenseInstanceDao.getLicenseInstancesForGroup(groupName);
-
-        Map<ServerLicense, List<ServerLicenseInstance>> groupedInstances = new HashMap<>();
-        for(ServerLicense license : sortedLicenses) {
-            groupedInstances.computeIfAbsent(license, k -> new ArrayList<>());
+    private void updateForPlayerInGroup(
+            String groupName,
+            String playerName,
+            Map<String, List<ServerLicenseInstance>> existInstancesById,
+            Set<String> taggedFlattenRules,
+            LocalDateTime lastUpdate,
+            LocalDateTime now,
+            List<ServerLicenseInstance> updatedInstances
+    ){
+        if (lastUpdate == null) {
+            lastUpdate = LocalDateTime.now()
+                    .withNano(0)
+                    .withSecond(0)
+                    .withMinute(0)
+                    .withHour(0);
         }
 
-        for(ServerLicenseInstance instance : instances){
-            String id = instance.licenseId();
-            ServerLicense license = licensesById.get(id);
-            if(license == null) continue;
-            groupedInstances.get(license).add(instance);
-        }
-
-        for(ServerLicense license : sortedLicenses) {
-            List<ServerLicenseInstance> instancesOfLicense = groupedInstances.get(license);
-
-        }
-
-        System.out.println(groupName + licenseIds);
-        if(1==1){
+        if(taggedFlattenRules == null){
             return;
         }
-        //Set<String> licenseIds = new HashSet<>();
+        // id -> groupChain
+        Map<String, List<String>> licenseIds = new HashMap<>();
+        Set<String> playersOfGroup = new HashSet<>();
 
+        parseRules(taggedFlattenRules, licenseIds, playersOfGroup);
 
-        instances.forEach(instance -> {
-            licenseIds.add(instance.licenseId());
-        });
-
-        List<ServerLicenseInstance> newInstances = instances.stream().map(instance -> updateSingle(instance, now, sortedLicenses)).toList();
-        licenseInstanceDao.saveInstances(newInstances, true);
-    }
-/*
-    private ServerLicenseInstance updateSingle(ServerLicenseInstance instance, LocalDateTime now, List<ServerLicense> licenseMap) {
-        if(1==1){
-            return instance;
-        }
-        String        licenseId  = instance.licenseId();
-        String        player     = instance.player();
-        String        groupName  = instance.groupName();
-        String        groupChain = instance.groupChain();
-        long          remaining  = instance.remaining();
-
-
-        Duration duration = Duration.between(lastUpdate, now);
-
-        LocalDateTime newUpdate = lastUpdate.plus(duration);
-        long durationSeconds = duration.toSeconds();
-        long newSeconds = remaining - durationSeconds;
-        if (newSeconds < 0) {
-            newSeconds = 0;
+        if(!playersOfGroup.contains(playerName) && !Objects.equals(groupName, "default")) {
+            return;
         }
 
-        //ServerLicense license = licenseMap.get(licenseId);
 
-        // 完善更新逻辑，规则如下
-        // 1.
-
-        ServerLicenseInstance newInst = new ServerLicenseInstance(
-                licenseId,
-                player,
-                groupName,
-                groupChain,
-                newSeconds,
-                newUpdate
-        );
+        List<ServerLicense> sortedValidLicenses = licenseIds.keySet().stream()
+                .map(licenseDao::getLicense)
+                .filter(Objects::nonNull)
+                .filter(license -> license.isValid(now))
+                .sorted(ServerLicense::compareTo)
+                .toList();
 
 
-        return newInst;
+        for(ServerLicense license : sortedValidLicenses) {
+            String id = license.id();
+            List<ServerLicenseInstance> instances = existInstancesById.get(id);
+
+            if(instances == null){
+                instances = new ArrayList<>();
+            }
+
+            // calculate time for update
+            LocalTime clearTime = license.clearTime();
+            LocalTime resetTime = license.resetTime();
+            boolean doClear = crossedTimePoint(lastUpdate, now, clearTime);
+            boolean doReset = crossedTimePoint(lastUpdate, now, resetTime);
+
+            // calculate diff and make new instance
+            if(instances.size() < licenseIds.get(id).size()){
+                List<String> chains = licenseIds.get(id);
+
+                Set<Pair<String, String>> exist = instances.stream()
+                        .map(inst -> new Pair<>(inst.licenseId(), inst.groupChain()))
+                        .collect(Collectors.toSet());
+
+                for (String chain : chains) {
+                    Pair<String, String> key = new Pair<>(id, chain);
+                    if (!exist.contains(key)) {
+                        ServerLicenseInstance newInst =
+                                ServerLicenseInstance.createNewEmpty(id, playerName, groupName, chain);
+                        assert license.isValid(now);
+                        // 单次型
+                        if(license.type() == 0){
+                            newInst = newInst.withRemaining(license.allowance());
+                        }
+                        // 周期型
+                        else{
+                            if(doClear) {
+                                newInst = newInst.withRemaining(0);
+                            }
+                            if(doReset) {
+                                newInst = newInst.withRemaining(license.allowance());
+                            }
+                            if(doClear || doReset) {
+                                updatedInstances.add(newInst);
+                            }
+                        }
+
+                        instances.add(newInst);
+                        updatedInstances.add(newInst);
+                    }
+                }
+            }
+
+            // update exist instance
+            for(ServerLicenseInstance instance : instances) {
+                ServerLicenseInstance newInst = instance;
+                if(license.type() != 0){
+                    if(doClear) {
+                        newInst = newInst.withRemaining(0);
+                    }
+                    if(doReset) {
+                        newInst = newInst.withRemaining(license.allowance());
+                    }
+                    if(doClear || doReset) {
+                        updatedInstances.add(newInst);
+                    }else if(newInst.remaining() > license.allowance()) {
+                        updatedInstances.add(newInst.withRemaining(license.allowance()));
+                    }
+                }
+            }
+        }
     }
 
-*/
+    private boolean verifyForPlayerInGroup(
+            String groupName,
+            String playerName,
+            Map<String, List<ServerLicenseInstance>> existInstancesById,
+            Set<String> taggedFlattenRules,
+            LocalDateTime lastUpdate,
+            LocalDateTime now,
+            List<ServerLicenseInstance> updatedInstances
+    ) {
+        if(taggedFlattenRules == null){
+            return false;
+        }
+        // id -> groupChain
+        Map<String, List<String>> licenseIds = new HashMap<>();
+        Set<String> playersOfGroup = new HashSet<>();
+
+        parseRules(taggedFlattenRules, licenseIds, playersOfGroup);
+
+        if(!playersOfGroup.contains(playerName) && !Objects.equals(groupName, "default")) {
+            return false;
+        }
 
 
+        List<ServerLicense> sortedValidLicenses = licenseIds.keySet().stream()
+                .map(licenseDao::getLicense)
+                .filter(Objects::nonNull)
+                .filter(license -> license.isValid(now))
+                .sorted(ServerLicense::compareTo)
+                .toList();
+
+        Duration timeElapsed = Duration.between(lastUpdate, now);
+        long sec = timeElapsed.get(ChronoUnit.SECONDS);
+
+        for(ServerLicense license : sortedValidLicenses) {
+            String id = license.id();
+            List<ServerLicenseInstance> instances = existInstancesById.get(id);
+            if(instances != null) {
+                for(ServerLicenseInstance instance : instances) {
+                    long instanceRemaining = instance.remaining();
+                    if(instanceRemaining == 0){
+                        continue;
+                    }
+                    if(instanceRemaining < sec){
+                        sec -= instanceRemaining;
+                        ServerLicenseInstance newInst = instance.withRemaining(0);
+                        updatedInstances.add(newInst);
+                        continue;
+                    }
+                    if(instanceRemaining >= sec && sec >= 0) {
+                        instanceRemaining -= sec;
+                        ServerLicenseInstance newInst = instance.withRemaining(instanceRemaining);
+                        updatedInstances.add(newInst);
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
 
 
+    private static boolean crossedTimePoint(
+            LocalDateTime lastUpdate,
+            LocalDateTime now,
+            LocalTime targetTime
+    ) {
+        if (!lastUpdate.isBefore(now)) {
+            return false;
+        }
+
+        // 以 now 的日期作为基准，构造目标时间点
+        LocalDateTime targetDateTime = LocalDateTime.of(now.toLocalDate(), targetTime);
+
+        /*
+         * 如果目标时间在 now 之后，说明真正要判断的目标时间
+         * 是“昨天的 targetTime”
+         */
+        if (targetDateTime.isAfter(now)) {
+            targetDateTime = targetDateTime.minusDays(1);
+        }
+
+        return !lastUpdate.isAfter(targetDateTime) && !now.isBefore(targetDateTime);
+    }
 
 
 

@@ -1,26 +1,26 @@
 package me.jissee.jarsauth.data.service;
 
 import me.jissee.jarsauth.data.ConnectionProvider;
-import me.jissee.jarsauth.data.dao.TimeCacheDAO;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
 
 public class TimeCacheService implements Service {
-    private final TimeCacheDAO dao;
+    private final Map<String,LocalDateTime> cache;
     public TimeCacheService(ConnectionProvider provider) {
-        this.dao = new TimeCacheDAO(provider);
+        cache = new HashMap<>();
     }
-    public Optional<LocalDateTime> get(String playerName, String tag){
-        return dao.get(playerName, tag);
+    public LocalDateTime getVolatile(String playerName){
+        return cache.get(playerName);
     }
 
-    public void set(String playerName, String tag, LocalDateTime dateTime){
-        dao.set(playerName, tag, dateTime);
+    public void setVolatile(String playerName, LocalDateTime dateTime){
+        cache.put(playerName, dateTime);
     }
 
     @Override
     public void initTable() {
-        dao.initTable();
+
     }
 }

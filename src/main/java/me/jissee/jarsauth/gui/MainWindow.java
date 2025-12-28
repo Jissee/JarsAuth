@@ -5,6 +5,7 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.data.DataManager;
+import me.jissee.jarsauth.data.TimeUtil;
 import me.jissee.jarsauth.data.model.*;
 import me.jissee.jarsauth.data.service.*;
 import me.jissee.jarsauth.gui.render.LicenseInstanceTableRenderer;
@@ -25,14 +26,13 @@ import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.nio.channels.SelectionKey;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static me.jissee.jarsauth.data.TimeUtil.formatDuration;
 import static me.jissee.jarsauth.data.model.ServerLicenseInstance.nameTag;
+import static me.jissee.jarsauth.gui.render.LocalDateWrap.*;
 
 public class MainWindow extends AbstractModWindow {
     public JPanel panel1;
@@ -312,10 +312,14 @@ public class MainWindow extends AbstractModWindow {
                     System.out.println("refresh");
                     ServerLicenseService service = DataManager.getServerInstance().getService(ServerLicenseService.class);
                     if(e.isShiftDown()){
+                        boolean result = service.updateAndVerifyForPlayer("Dev");
+                        System.out.println(result);
                         //service.updateInstances(new ArrayList<>(), false);
                     }else {
                         //service.updateInstances(new ArrayList<>(), true);
                     }
+                    String name = licenseGroupList.getSelectedValue();
+                    updateServerLicenseInstanceTable(name);
                 }
             }
         });
@@ -607,12 +611,12 @@ public class MainWindow extends AbstractModWindow {
             String name = PeriodType.parse(type, Locales::getString);
             model.addRow(new Object[]{
                     ":" + license.id(),
-                    license.validFrom(),
-                    license.validUntil(),
+                    from(license.validFrom()),
+                    until(license.validUntil()),
                     name,
                     license.resetTime(),
                     license.clearTime(),
-                    license.allowance()
+                    formatDuration(license.allowance())
             });
         }
 
@@ -625,7 +629,7 @@ public class MainWindow extends AbstractModWindow {
     }
 
     private void updateServerLicenseInstanceTable(String groupName) {
-        DefaultTableModel model = new ImmutableTableModel();
+
         LicenseGroupRuleService lgrs = DataManager.getServerInstance().getService(LicenseGroupRuleService.class);
         LicenseGroupRuleEntry ruleEntry = lgrs.getTaggedFlattenRuleEntry(groupName);
         ServerLicenseService sls = DataManager.getServerInstance().getService(ServerLicenseService.class);
@@ -657,42 +661,47 @@ public class MainWindow extends AbstractModWindow {
             }
         }
 
-        var combinedValid = ServerLicenseService.combineLicenseIdsAndGroupChain(validIds, validChains);
-
+        var combinedValid = sls.combineLicenseIdsAndGroupChain(validIds, validChains);
+        DefaultTableModel licenseTableModel = new ImmutableTableModel();
         for (var pair : combinedValid) {
-            model.addColumn(nameTag(pair.getA(), pair.getB()));
+            licenseTableModel.addColumn(nameTag(pair.getA(), pair.getB()));
         }
 
-        var combinedInvalid = ServerLicenseService.combineLicenseIdsAndGroupChain(invalidIds, invalidChains);
+        var combinedInvalid = sls.combineLicenseIdsAndGroupChain(invalidIds, invalidChains);
         for (var pair : combinedInvalid) {
-            model.addColumn(nameTag(pair.getA(), pair.getB()));
+            licenseTableModel.addColumn(nameTag(pair.getA(), pair.getB()));
         }
+        DefaultTableModel headerModel = new ImmutableTableModel();
+        headerModel.addColumn(Locales.getString("label.server.license.instance.player.name"));
 
-        sls.makeNewInstances(groupName, combinedValid, players);
         var resultMap = sls.getRemainingMatrixForGroup(groupName);
 
-        for (String playerName : players) {
+        for (String playerName : resultMap.keySet()) {
+            headerModel.addRow(new Object[]{playerName});
             Object[] row = new Object[validIds.size() + invalidIds.size()];
             int col = 0;
             for (var validId : combinedValid) {
                 String key = nameTag(validId.getA(), validId.getB());
-                row[col] = resultMap.get(playerName).getOrDefault(key, -1L);
+                long remaining = resultMap.get(playerName).getOrDefault(key, -1L);
+                String remainingStr;
+                if (remaining > -1) {
+                    remainingStr = TimeUtil.formatDuration(remaining);
+                }else{
+                    remainingStr = "-1";
+                }
+                row[col] = remainingStr;
                 col++;
             }
             for (var invalidId : invalidIds) {
                 row[col] = "N/A";
                 col++;
             }
-            model.addRow(row);
+            licenseTableModel.addRow(row);
         }
 
-        DefaultTableModel headerModel = new ImmutableTableModel();
-        headerModel.addColumn(Locales.getString("label.server.license.instance.player_name"));
-        for (String playerName : players) {
-            headerModel.addRow(new Object[]{playerName});
-        }
+
         rowHeaderTable.setModel(headerModel);
-        licenseInstanceTable.setModel(model);
+        licenseInstanceTable.setModel(licenseTableModel);
         JTableUtil.adjustColumnWidths(licenseInstanceTable);
         licenseInstanceHeaderPane.getVerticalScrollBar()
                 .setModel(licenseInstancePane.getVerticalScrollBar().getModel());
@@ -818,7 +827,8 @@ public class MainWindow extends AbstractModWindow {
             LicenseGroupRuleEntry profile1 = new LicenseGroupRuleEntry(groupName, Arrays.stream(newName.split("\n"))
                     .map(String::trim)           // 去除前后空白
                     .filter(s -> !s.isEmpty())   // 过滤空字符串
-                    .collect(Collectors.toList()));
+                    .collect(Collectors.toSet())
+            );
 
             service1.saveRuleEntry(profile1);
 
@@ -867,12 +877,36 @@ public class MainWindow extends AbstractModWindow {
         int row = licenseInstanceTable.getSelectedRow();
         int column = licenseInstanceTable.getSelectedColumn();
         String player = rowHeaderTable.getValueAt(row, 0).toString();
+        String groupName = licenseGroupList.getSelectedValue();
+
         String rule = licenseInstanceTable.getColumnName(column);
+        rule = rule.substring(1);
+        int index = rule.lastIndexOf('(');
+        int endIndex = rule.lastIndexOf(')');
+        String licenseId = rule.substring(0, index - 1);
+        String groupChain = rule.substring(index + 1, endIndex);
         String value = licenseInstanceTable.getValueAt(row, column).toString();
+
+        ServerLicenseService service = DataManager.getServerInstance().getService(ServerLicenseService.class);
+        ServerLicenseInstance instance = service.getLicenseInstance(licenseId, player, groupName, groupChain);
+
         if (value.equals("N/A")) {
             showInfo(Locales.getString("info.no.license"), "");
+        } else if (instance == null) {
+            showInfo(Locales.getString("info.no.instance"), "");
         } else {
-            System.out.println(player + " " + rule);
+            LicenseInstanceWindow window = new LicenseInstanceWindow(Locales.getString("title.window.edit"), instance, (newLicense) -> {
+                long newRemaining = newLicense.remaining();
+                ServerLicense license = service.getLicense(newLicense.licenseId());
+                long limit = license.allowance();
+                if(newRemaining > limit) {
+                    showInfo(Locales.getString("info.instance.allowance.exceed"), "");
+                    newLicense = newLicense.withRemaining(limit);
+                }
+                service.saveInstances(List.of(newLicense), true);
+                updateServerLicenseInstanceTable(groupName);
+            });
+            window.show();
         }
 
     }

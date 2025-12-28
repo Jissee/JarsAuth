@@ -1,6 +1,8 @@
 package me.jissee.jarsauth.data.dao;
 
 import me.jissee.jarsauth.data.ConnectionProvider;
+import me.jissee.jarsauth.data.model.LicenseGroupRuleEntry;
+import oshi.util.tuples.Pair;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -8,6 +10,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * group rule: 
@@ -53,7 +57,7 @@ public class LicenseGroupRuleDAO implements DAO{
         }
     }
 
-    public void insertRules(String groupName, List<String> rules) {
+    public void insertRules(String groupName, Set<String> rules) {
         String sql = "INSERT OR IGNORE INTO license_group_rule (group_name, group_rule) VALUES (?, ?);";
         try (Connection conn = getConnection();
              PreparedStatement statement = conn.prepareStatement(sql)) {
