@@ -26,13 +26,14 @@ import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static me.jissee.jarsauth.data.TimeUtil.formatDuration;
 import static me.jissee.jarsauth.data.model.ServerLicenseInstance.nameTag;
-import static me.jissee.jarsauth.gui.render.LocalDateWrap.*;
+import static me.jissee.jarsauth.gui.render.LocalDateTimeWrap.*;
 
 public class MainWindow extends AbstractModWindow {
     public JPanel panel1;
@@ -595,9 +596,9 @@ public class MainWindow extends AbstractModWindow {
         model.addColumn(Locales.getString("label.server.license.id"));
         model.addColumn(Locales.getString("label.server.license.valid.from"));
         model.addColumn(Locales.getString("label.server.license.valid.until"));
-        model.addColumn(Locales.getString("label.server.license.type"));
         model.addColumn(Locales.getString("label.server.license.time.reset"));
         model.addColumn(Locales.getString("label.server.license.time.clear"));
+        model.addColumn(Locales.getString("label.server.license.type"));
         model.addColumn(Locales.getString("label.server.license.allowance"));
 
 
@@ -608,16 +609,29 @@ public class MainWindow extends AbstractModWindow {
 
         for (ServerLicense license : licenses) {
             int type = license.type();
-            String name = PeriodType.parse(type, Locales::getString);
-            model.addRow(new Object[]{
-                    ":" + license.id(),
-                    from(license.validFrom()),
-                    until(license.validUntil()),
-                    name,
-                    license.resetTime(),
-                    license.clearTime(),
-                    formatDuration(license.allowance())
-            });
+            String typeTag = PeriodType.parse(type, Locales::getString);
+            if(type == 0){
+                model.addRow(new Object[]{
+                        ":" + license.id(),
+                        from(license.validFrom(), license.resetTime()),
+                        until(license.validUntil(), license.clearTime()),
+                        "",
+                        "",
+                        typeTag,
+                        formatDuration(license.allowance())
+                });
+            }else{
+                model.addRow(new Object[]{
+                        ":" + license.id(),
+                        from(license.validFrom(), null),
+                        until(license.validUntil(), null),
+                        license.resetTime(),
+                        license.clearTime(),
+                        typeTag,
+                        formatDuration(license.allowance())
+                });
+            }
+
         }
 
 
@@ -625,7 +639,10 @@ public class MainWindow extends AbstractModWindow {
 
         DefaultTableColumnModel columnModel = (DefaultTableColumnModel) licenseTable.getColumnModel();
 
-        columnModel.getColumn(0).setMaxWidth(120);
+        //columnModel.getColumn(0).setMaxWidth(120);
+        columnModel.getColumn(1).setMinWidth(120);
+        columnModel.getColumn(2).setMinWidth(120);
+
     }
 
     private void updateServerLicenseInstanceTable(String groupName) {
@@ -661,13 +678,13 @@ public class MainWindow extends AbstractModWindow {
             }
         }
 
-        var combinedValid = sls.combineLicenseIdsAndGroupChain(validIds, validChains);
+        var combinedValid = sls.combineLicenseIdsAndGroupChain(validIds, validChains, true);
         DefaultTableModel licenseTableModel = new ImmutableTableModel();
         for (var pair : combinedValid) {
             licenseTableModel.addColumn(nameTag(pair.getA(), pair.getB()));
         }
 
-        var combinedInvalid = sls.combineLicenseIdsAndGroupChain(invalidIds, invalidChains);
+        var combinedInvalid = sls.combineLicenseIdsAndGroupChain(invalidIds, invalidChains, false);
         for (var pair : combinedInvalid) {
             licenseTableModel.addColumn(nameTag(pair.getA(), pair.getB()));
         }

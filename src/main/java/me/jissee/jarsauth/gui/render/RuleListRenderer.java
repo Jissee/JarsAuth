@@ -34,6 +34,9 @@ public class RuleListRenderer extends DefaultListCellRenderer {
                 c.setForeground(Color.BLACK);
             }
         }
+        if(isSelected){
+            c.setForeground(list.getSelectionForeground());
+        }
 
         return c;
     }

@@ -102,20 +102,20 @@ public class AccFileInfoDAO implements DAO {
 
     public void insertEntries(String group, Map<String, String> files, List<String> folders) {
         String sql = "INSERT INTO acc_file_info (group_name, key, value) VALUES (?, ?, ?)";
-        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+        try (PreparedStatement statement = getConnection().prepareStatement(sql)) {
             for (Map.Entry<String, String> entry : files.entrySet()) {
-                stmt.setString(1, group);
-                stmt.setString(2, entry.getKey());
-                stmt.setString(3, entry.getValue());
-                stmt.addBatch();
+                statement.setString(1, group);
+                statement.setString(2, entry.getKey());
+                statement.setString(3, entry.getValue());
+                statement.addBatch();
             }
             for (String folder : folders) {
-                stmt.setString(1, group);
-                stmt.setString(2, folder);
-                stmt.setString(3, "folder");
-                stmt.addBatch();
+                statement.setString(1, group);
+                statement.setString(2, folder);
+                statement.setString(3, "folder");
+                statement.addBatch();
             }
-            stmt.executeBatch();
+            statement.executeBatch();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

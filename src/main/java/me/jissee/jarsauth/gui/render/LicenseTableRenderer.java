@@ -6,6 +6,7 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 
@@ -22,17 +23,17 @@ public class LicenseTableRenderer extends DefaultTableCellRenderer {
         super.getTableCellRendererComponent(
                 table, value, isSelected, hasFocus, row, column
         );
-        if(value instanceof LocalDateWrap date){
+        if(value instanceof LocalDateTimeWrap date){
             try{
-                LocalDate now = LocalDate.now();
-                if(date instanceof LocalDateWrap.From){
-                    if (date.get().isAfter(now)) {
+                LocalDateTime now = LocalDateTime.now();
+                if(date instanceof LocalDateTimeWrap.From){
+                    if (date.toLocalDateTime().isAfter(now)) {
                         setForeground(Color.GREEN);
                     } else {
                         setForeground(Color.RED);
                     }
                 }else{
-                    if (date.get().isBefore(now)) {
+                    if (date.toLocalDateTime().isBefore(now)) {
                         setForeground(Color.RED);
                     } else {
                         setForeground(Color.GREEN);

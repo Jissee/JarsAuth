@@ -19,7 +19,7 @@ public class LicenseGroupRuleService implements Service {
     /** 获取原始规则（不展开子组） */
     public LicenseGroupRuleEntry getUnflattenedRuleEntry(String groupName) {
         List<String> rules = dao.findRulesByGroup(groupName);
-        return new LicenseGroupRuleEntry(groupName, new HashSet<>(rules));
+        return new LicenseGroupRuleEntry(groupName, new LinkedHashSet<>(rules.stream().sorted().collect(Collectors.toList())));
     }
 
     /** 获取递归展开后的规则（无 tag） */
@@ -67,7 +67,7 @@ public class LicenseGroupRuleService implements Service {
             }
         }
 
-        return new LicenseGroupRuleEntry(groupName, result);
+        return new LicenseGroupRuleEntry(groupName, result.stream().sorted().collect(Collectors.toCollection(LinkedHashSet::new)));
     }
 
     private void collectTaggedRules(

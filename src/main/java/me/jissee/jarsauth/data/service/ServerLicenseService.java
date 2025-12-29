@@ -84,7 +84,8 @@ public class ServerLicenseService implements Service{
 
     public List<Pair<String, String>> combineLicenseIdsAndGroupChain(
             List<String> licenses,
-            List<String> groupChains
+            List<String> groupChains,
+            boolean sort
     ) {
 
         if (licenses.size() != groupChains.size()) {
@@ -95,20 +96,22 @@ public class ServerLicenseService implements Service{
         for (int i = 0; i < licenses.size(); i++) {
             result.add(new Pair<>(licenses.get(i), groupChains.get(i)));
         }
+        if (sort) {
+            // 一次性加载所有 License
+            Map<String, ServerLicense> licenseMap = result.stream()
+                    .map(Pair::getA)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .map(id -> new AbstractMap.SimpleEntry<>(id, getLicense(id)))
+                    .filter(e -> e.getValue() != null)
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            Map.Entry::getValue
+                    ));
 
-        // 一次性加载所有 License
-        Map<String, ServerLicense> licenseMap = result.stream()
-                .map(Pair::getA)
-                .distinct()
-                .collect(Collectors.toMap(
-                        id -> id,
-                        this::getLicense
-                ));
-
-        // 使用内存数据排序
-        result.sort(Comparator.comparing(p -> licenseMap.get(p.getA()))
-        );
-
+            // 使用内存数据排序
+            result.sort(Comparator.comparing(p -> licenseMap.get(p.getA())));
+        }
         return result;
     }
 
@@ -162,9 +165,6 @@ public class ServerLicenseService implements Service{
     }
 
     public boolean updateAndVerifyForPlayer(String playerName) {
-        LocalDateTime lastUpdate = timeCacheService.getVolatile(playerName);
-        LocalDateTime now = LocalDateTime.now().withNano(0);
-
         Set<String> groupNames = groupService.getAllGroupNames();
         List<ServerLicenseInstance> updatedInstances = new LinkedList<>();
         Map<String, Set<String>> taggedFlattenRulesByGroup = new HashMap<>();
@@ -177,6 +177,9 @@ public class ServerLicenseService implements Service{
 
         List<ServerLicenseInstance> existInstances = licenseInstanceDao.getLicenseInstancesForPlayer(playerName);
         InstancesHandler existInstancesHandler = new InstancesHandler(existInstances);
+
+        LocalDateTime lastUpdate = timeCacheService.getPermanent(playerName);
+        LocalDateTime now = LocalDateTime.now().withNano(0);
 
         for(String groupName : groupNames) {
             Map<String, List<ServerLicenseInstance>> existInstancesById = existInstancesHandler.instancesById(groupName);
@@ -192,11 +195,14 @@ public class ServerLicenseService implements Service{
         }
         licenseInstanceDao.saveInstances(updatedInstances, true);
         updatedInstances.clear();
+        timeCacheService.setPermanent(playerName, now);
+        // update ended
 
         existInstances = licenseInstanceDao.getLicenseInstancesForPlayer(playerName);
         existInstancesHandler = new InstancesHandler(existInstances);
-        if(lastUpdate == null) {
-            lastUpdate = now;
+        LocalDateTime lastVerify = timeCacheService.getVolatile(playerName);
+        if(lastVerify == null) {
+            lastVerify = now;
         }
 
         boolean result = false;
@@ -207,7 +213,7 @@ public class ServerLicenseService implements Service{
                     playerName,
                     existInstancesById,
                     taggedFlattenRulesByGroup.get(groupName),
-                    lastUpdate,
+                    lastVerify,
                     now,
                     updatedInstances
             );
@@ -254,9 +260,7 @@ public class ServerLicenseService implements Service{
         if (lastUpdate == null) {
             lastUpdate = LocalDateTime.now()
                     .withNano(0)
-                    .withSecond(0)
-                    .withMinute(0)
-                    .withHour(0);
+                    .minusDays(1);
         }
 
         if(taggedFlattenRules == null){
