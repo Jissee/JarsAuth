@@ -1,7 +1,6 @@
 package me.jissee.jarsauth.event;
 
 import me.jissee.jarsauth.config.ConfigKey;
-import me.jissee.jarsauth.config.StaticConfig;
 import me.jissee.jarsauth.config.VolatileConfig;
 import me.jissee.jarsauth.data.DataManager;
 import me.jissee.jarsauth.data.service.ConfigService;
@@ -28,6 +27,8 @@ public class EventHandler {
     private static final Queue<IntHolder> delayTicks = new ArrayDeque<>();
 
     private static final List<PendingList> pendingLists = new ArrayList<>();
+    private static final DataManager dataManager = DataManager.getServerInstance();
+    private static final ConfigService configService = dataManager.getService(ConfigService.class);
 
     private static DedicatedServer server;
     @SubscribeEvent
@@ -79,7 +80,7 @@ public class EventHandler {
         Player plr = event.getEntity();
         if(plr instanceof ServerPlayer svplr){
             pendingLists.forEach(pendingList -> pendingList.addUser(svplr.getUUID()));
-            if(StaticConfig.getInstance().getBoolean(ConfigKey.FILE_CHECKSUM_ENABLED)){
+            if(configService.getValue(ConfigKey.FILE_CHECKSUM_ENABLED) == 1){
                 if(VolatileConfig.getInstance().ifThisVariableIsTrueThenTheServerIsInRecordingModeOtherwiseTheServerIsInAuthenticatingMode().get()){
                     if(Objects.requireNonNull(svplr.getServer()).getPlayerCount() > 1){
                         svplr.connection.disconnect(Component.translatable("text.disconn.recording"));

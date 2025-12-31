@@ -52,7 +52,6 @@ public class MainWindow extends AbstractModWindow {
     private JTextField slIntervalText;
     private JTextField fcTimeoutText;
     private JTextField caTimeoutText;
-    private JCheckBox slAutoRemove;
     private JComboBox<String> languageComboBox;
     private JButton exportButton;
     private JLabel signedLabel;
@@ -233,7 +232,6 @@ public class MainWindow extends AbstractModWindow {
         caIntervalText.getDocument().addDocumentListener(new DocumentListenerImpl());
         caTimeoutText.getDocument().addDocumentListener(new DocumentListenerImpl());
         slIntervalText.getDocument().addDocumentListener(new DocumentListenerImpl());
-        slAutoRemove.addActionListener(e -> onChangeConfig(false));
 
         licenseTable.addKeyListener(new KeyAdapter() {
             @Override
@@ -312,11 +310,11 @@ public class MainWindow extends AbstractModWindow {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     System.out.println("refresh");
                     ServerLicenseService service = DataManager.getServerInstance().getService(ServerLicenseService.class);
-                    if(e.isShiftDown()){
+                    if (e.isShiftDown()) {
                         boolean result = service.updateAndVerifyForPlayer("Dev");
                         System.out.println(result);
                         //service.updateInstances(new ArrayList<>(), false);
-                    }else {
+                    } else {
                         //service.updateInstances(new ArrayList<>(), true);
                     }
                     String name = licenseGroupList.getSelectedValue();
@@ -364,11 +362,13 @@ public class MainWindow extends AbstractModWindow {
         String groupName = removeAccGroupTag(nameWithTag);
         AccProfileService service = DataManager.getServerInstance().getService(AccProfileService.class);
         List<String> list = service.getAllFileNames(groupName);
-
+        FileListWindow window = new FileListWindow(Locales.getString("title.window.file"), list);
+        window.show();
     }
 
     private void onAccGroupListRenameSelection() {
         String nameWithTag = accGroupList.getSelectedValue();
+        if (nameWithTag == null) return;
         String oldName = removeAccGroupTag(nameWithTag);
 
         TextEditorWindow textEditorWindow = new TextEditorWindow(Locales.getString("title.window.edit"), oldName, (newName) -> {
@@ -610,7 +610,7 @@ public class MainWindow extends AbstractModWindow {
         for (ServerLicense license : licenses) {
             int type = license.type();
             String typeTag = PeriodType.parse(type, Locales::getString);
-            if(type == 0){
+            if (type == 0) {
                 model.addRow(new Object[]{
                         ":" + license.id(),
                         from(license.validFrom(), license.resetTime()),
@@ -620,7 +620,7 @@ public class MainWindow extends AbstractModWindow {
                         typeTag,
                         formatDuration(license.allowance())
                 });
-            }else{
+            } else {
                 model.addRow(new Object[]{
                         ":" + license.id(),
                         from(license.validFrom(), null),
@@ -703,7 +703,7 @@ public class MainWindow extends AbstractModWindow {
                 String remainingStr;
                 if (remaining > -1) {
                     remainingStr = TimeUtil.formatDuration(remaining);
-                }else{
+                } else {
                     remainingStr = "-1";
                 }
                 row[col] = remainingStr;
@@ -906,17 +906,22 @@ public class MainWindow extends AbstractModWindow {
 
         ServerLicenseService service = DataManager.getServerInstance().getService(ServerLicenseService.class);
         ServerLicenseInstance instance = service.getLicenseInstance(licenseId, player, groupName, groupChain);
+        ServerLicense license = service.getLicense(licenseId);
+
 
         if (value.equals("N/A")) {
             showInfo(Locales.getString("info.no.license"), "");
         } else if (instance == null) {
             showInfo(Locales.getString("info.no.instance"), "");
         } else {
+            if (!license.isValid(LocalDateTime.now())) {
+                showInfo(Locales.getString("info.license.expired"), "");
+            }
             LicenseInstanceWindow window = new LicenseInstanceWindow(Locales.getString("title.window.edit"), instance, (newLicense) -> {
                 long newRemaining = newLicense.remaining();
-                ServerLicense license = service.getLicense(newLicense.licenseId());
-                long limit = license.allowance();
-                if(newRemaining > limit) {
+                ServerLicense license1 = service.getLicense(newLicense.licenseId());
+                long limit = license1.allowance();
+                if (newRemaining > limit) {
                     showInfo(Locales.getString("info.instance.allowance.exceed"), "");
                     newLicense = newLicense.withRemaining(limit);
                 }
@@ -1018,16 +1023,12 @@ public class MainWindow extends AbstractModWindow {
         if (isSLEnabled) {
             isSLEnabledBox.setSelected(true);
             slIntervalText.setEnabled(true);
-            slAutoRemove.setEnabled(true);
             slIntervalText.setText(String.valueOf(service.getValue(ConfigKey.SERVER_LICENSE_INTERVAL)));
-            slAutoRemove.setSelected(service.getValue(ConfigKey.SERVER_LICENSE_AUTO_REMOVE) != 0);
 
         } else {
             isSLEnabledBox.setSelected(false);
             slIntervalText.setEnabled(false);
-            slAutoRemove.setEnabled(false);
             slIntervalText.setText("");
-            slAutoRemove.setSelected(false);
         }
 
         isChangingCheckBox = false;
@@ -1062,9 +1063,6 @@ public class MainWindow extends AbstractModWindow {
         service.setCheckedValue(ConfigKey.SERVER_LICENSE_ENABLED, parseLong(isSLEnabledBox.isSelected() ? "1" : "0"));
         if (isSLEnabledBox.isSelected()) {
             service.setCheckedValue(ConfigKey.SERVER_LICENSE_INTERVAL, parseLong(slIntervalText.getText()));
-            service.setCheckedValue(ConfigKey.SERVER_LICENSE_AUTO_REMOVE, parseLong(slAutoRemove.isSelected() ? "1" : "0"));
-
-
         }
 
         int lang = languageComboBox.getSelectedIndex();
@@ -1416,22 +1414,12 @@ public class MainWindow extends AbstractModWindow {
         this.$$$loadLabelText$$$(label17, this.$$$getMessageFromBundle$$$("ui", "config.ca.timeout"));
         label17.setToolTipText("");
         panel10.add(label17, new GridConstraints(2, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        final JLabel label18 = new JLabel();
-        this.$$$loadLabelText$$$(label18, this.$$$getMessageFromBundle$$$("ui", "config.sl.auto-remove"));
-        panel10.add(label18, new GridConstraints(2, 4, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         fcTimeoutText = new JTextField();
         fcTimeoutText.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "config.unit.tip"));
         panel10.add(fcTimeoutText, new GridConstraints(2, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
         caTimeoutText = new JTextField();
         caTimeoutText.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "config.unit.tip"));
         panel10.add(caTimeoutText, new GridConstraints(2, 3, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
-        slAutoRemove = new JCheckBox();
-        slAutoRemove.setText("");
-        panel10.add(slAutoRemove, new GridConstraints(2, 5, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        final JLabel label19 = new JLabel();
-        this.$$$loadLabelText$$$(label19, this.$$$getMessageFromBundle$$$("ui", "config.ui.language"));
-        label19.setToolTipText("");
-        panel10.add(label19, new GridConstraints(3, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         languageComboBox = new JComboBox();
         languageComboBox.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "config.ui.language.tip"));
         panel10.add(languageComboBox, new GridConstraints(3, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));

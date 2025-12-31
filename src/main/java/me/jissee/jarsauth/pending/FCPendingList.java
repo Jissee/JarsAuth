@@ -19,7 +19,7 @@ public class FCPendingList extends PendingList {
     }
 
     @Override
-    protected String calculateExpected(String random) throws Exception {
+    protected String calculateExpected(UUID userId, String random) throws Exception {
         return "test123";
     }
 
@@ -29,8 +29,9 @@ public class FCPendingList extends PendingList {
     }
 
     @Override
-    protected void sendRandom(UUID userId, String random) {
+    protected void sendInfoToPlayer(UUID userId, String random) {
         ServerPlayer player = server.getPlayerList().getPlayer(userId);
+
         if (player == null) return;
         //player.connection.send(new ClientboundResourcePackPacket());
     }

@@ -360,7 +360,6 @@ public class LicenseEditorWindow extends AbstractModWindow {
 
     @Override
     public String getTitle() {
-        if (title == null) return null;
         return title;
     }
 

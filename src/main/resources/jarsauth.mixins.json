@@ -9,15 +9,10 @@
   },
   "mixins": [
     "BlockMixin",
-    "EntityMixin",
-    "ItemEntityMixin",
-    "ServerboundPacket",
-    "ServerGamePacketListenerImplMixin",
-    "ServerGUIMixin",
-    "ServerMixin",
-    "ServerPlayerMixin"
+    "ServerboundPacketMixin",
+    "ServerGUIMixin"
   ],
   "client":[
-    "ClientboundPacket"
+    "ClientboundPacketMixin"
   ]
 }

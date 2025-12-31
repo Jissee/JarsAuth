@@ -11,8 +11,13 @@ public class SLPendingList extends PendingList {
     }
 
     @Override
-    protected String calculateExpected(String random) throws Exception {
+    protected String generateRandom() {
         return "";
+    }
+
+    @Override
+    protected String calculateExpected(UUID userId, String random) throws Exception {
+        return "true";
     }
 
     @Override
@@ -21,8 +26,10 @@ public class SLPendingList extends PendingList {
     }
 
     @Override
-    protected void sendRandom(UUID userId, String random) {
+    protected void sendInfoToPlayer(UUID userId, String random) {
+        server.getPlayerList().getPlayer(userId);
 
+        onVerificationResponse(userId, random);
     }
 
     @Override

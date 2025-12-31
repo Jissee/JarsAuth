@@ -2,22 +2,22 @@ package me.jissee.jarsauth.pending.base;
 
 import net.minecraft.server.MinecraftServer;
 
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.*;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static me.jissee.jarsauth.data.TimeUtil.now;
 
 /**
- * 抽象的验证任务执行器
- * 子类只需实现生成随机数据、计算预期值、比较结果
+ * 严格串行、单轮验证的 PendingList 实现
+ * 保留原有抽象接口，不引入轮次 ID
  */
 public abstract class PendingList {
+
     public enum FailureType {
         CALCULATION_ERROR("internal"),
         COMPARE_ERROR("mismatch"),
         TIMEOUT("timeout"),
-        EXPECTED_NOT_COMPUTED("internal"),
         RESULT_MISMATCH("mismatch");
 
         private final String key;
@@ -31,17 +31,19 @@ public abstract class PendingList {
         }
     }
 
-    // 用户信息
-    static class UserContext {
+    protected static final class UserContext {
         final UUID userId;
-        long lastVerificationTime; // 上一次验证时间（秒）
+
+        long lastVerificationTime;
+
         String randomData;
         String expectedResult;
         String clientResult;
-        final AtomicBoolean verified = new AtomicBoolean(false);
 
-        // deadline 定时任务，用于超时检查
-        ScheduledFuture<?> deadlineTask;
+        boolean inProgress;   // 当前是否存在未完成的验证
+        boolean finished;     // 本轮是否已裁决
+
+        ScheduledFuture<?> timeoutTask;
 
         UserContext(UUID userId) {
             this.userId = userId;
@@ -49,131 +51,186 @@ public abstract class PendingList {
         }
     }
 
+    protected final MinecraftServer server;
     private final Map<UUID, UserContext> users = new ConcurrentHashMap<>();
 
-    protected final MinecraftServer server;
-    private long interval; // 验证间隔 (秒)
-    private long timeout;  // 超时阈值 (秒)
+    private long interval;
+    private long timeout;
 
-    private final ScheduledExecutorService scheduler;
+    private final ScheduledExecutorService scheduler =
+            Executors.newScheduledThreadPool(2, r -> {
+                Thread t = new Thread(r);
+                t.setDaemon(true);
+                return t;
+            });
 
-
-    public PendingList(MinecraftServer server) {
+    protected PendingList(MinecraftServer server) {
         this.server = server;
         reload();
-        scheduler = Executors.newScheduledThreadPool(2, r -> {
-            Thread thread = new Thread(r);
-            thread.setDaemon(true);
-            return thread;
-        });
     }
 
-    private String generateRandom(){
+
+    protected String generateRandom(){
         return UUID.randomUUID().toString();
     }
 
-    protected abstract String calculateExpected(String random) throws Exception;
+    protected abstract String calculateExpected(UUID userId, String random) throws Exception;
+
     protected abstract boolean compare(String expected, String actual);
-    protected abstract void sendRandom(UUID userId, String random);
+
+    protected abstract void sendInfoToPlayer(UUID userId, String random);
+
     protected abstract void notifyFailure(UUID userId, String reason);
+
     protected abstract String formatReason(FailureType type, Exception e);
 
     protected abstract long getInterval();
+
     protected abstract long getTimeout();
 
-    public void reload(){
+    /* ---------------- 生命周期 ---------------- */
+
+    public void reload() {
         this.interval = getInterval();
         this.timeout = getTimeout();
     }
 
-    /** 添加用户并立即进行首次验证 */
     public void addUser(UUID userId) {
         UserContext ctx = new UserContext(userId);
         users.put(userId, ctx);
-        startVerification(ctx, true); // 首次立即执行
+        scheduleNext(ctx, true);
     }
 
-    /** 移除用户 */
     public void removeUser(UUID userId) {
         UserContext ctx = users.remove(userId);
-        if (ctx != null && ctx.deadlineTask != null) {
-            ctx.deadlineTask.cancel(false);
+        if (ctx != null) {
+            synchronized (ctx) {
+                cancelTimeout(ctx);
+                ctx.inProgress = false;
+                ctx.finished = true;
+            }
         }
     }
 
-    /** 网络线程：收到客户端返回 */
+    /* ---------------- 客户端响应入口 ---------------- */
+
     public void onVerificationResponse(UUID userId, String clientResult) {
         UserContext ctx = users.get(userId);
         if (ctx == null) return;
-        ctx.clientResult = clientResult;
 
-        // 收到响应后立即校验
-        if (ctx.expectedResult != null) {
-            boolean success = false;
-            try {
-                success = compare(ctx.expectedResult, ctx.clientResult);
-            } catch (Exception e) {
-                notifyFailureWithType(userId, FailureType.COMPARE_ERROR, e);
+        synchronized (ctx) {
+            if (!ctx.inProgress || ctx.finished) {
+                return; // 已超时 / 已完成 / 非当前轮
             }
 
-            if (!success) {
-                notifyFailureWithType(userId, FailureType.RESULT_MISMATCH, null);
-            }
-
-            // 成功或失败都取消 deadline 任务
-            if (ctx.deadlineTask != null) {
-                ctx.deadlineTask.cancel(false);
-                ctx.deadlineTask = null;
-            }
-
-            // 准备下一次验证
-            scheduleVerification(ctx);
+            ctx.clientResult = clientResult;
+            completeVerification(ctx);
         }
     }
 
-    private void notifyFailureWithType(UUID userId, FailureType type, Exception e) {
-        String reason = formatReason(type, e);
-        notifyFailure(userId, reason);
-        removeUser(userId); // 出错后移除用户
-    }
+    /* ---------------- 核心流程 ---------------- */
 
+    private void startVerification(UserContext ctx) {
+        synchronized (ctx) {
+            if (ctx.inProgress) {
+                return; // 理论上不应发生，防御性检查
+            }
 
-    /** 统一的验证调度入口 */
-    private void startVerification(UserContext ctx, boolean immediate) {
-        Runnable task = () -> {
-            // 阶段1：生成随机数据并发送
+            ctx.inProgress = true;
+            ctx.finished = false;
+            ctx.clientResult = null;
+            ctx.expectedResult = null;
+            ctx.randomData = null;
+
             ctx.randomData = generateRandom();
             ctx.lastVerificationTime = now();
-            sendRandom(ctx.userId, ctx.randomData);
 
-            try {
-                ctx.expectedResult = calculateExpected(ctx.randomData);
-            } catch (Exception e) {
-                notifyFailureWithType(ctx.userId, FailureType.CALCULATION_ERROR, e);
-                return;
-            }
-
-            // 阶段2：安排超时检查
-            ctx.deadlineTask = scheduler.schedule(() -> {
-                if (ctx.clientResult == null) {
-                    notifyFailureWithType(ctx.userId, FailureType.TIMEOUT, null);
-                } else if (ctx.expectedResult == null) {
-                    notifyFailureWithType(ctx.userId, FailureType.EXPECTED_NOT_COMPUTED, null);
+            scheduler.execute(() -> {
+                synchronized (ctx) {
+                    try {
+                        sendInfoToPlayer(ctx.userId, ctx.randomData);
+                        ctx.expectedResult = calculateExpected(ctx.userId, ctx.randomData);
+                    } catch (Exception e) {
+                        fail(ctx, FailureType.CALCULATION_ERROR, e);
+                    }
                 }
-            }, timeout, TimeUnit.SECONDS);
-        };
-
-        if (immediate) {
-            // 立即执行
-            scheduler.execute(task);
-        } else {
-            // 延迟 interval 秒后执行
-            scheduler.schedule(task, interval, TimeUnit.SECONDS);
+            });
+            scheduleTimeout(ctx);
         }
     }
 
-    /** 在 onVerificationResponse 成功/失败后安排下一次 */
-    private void scheduleVerification(UserContext ctx) {
-        startVerification(ctx, false);
+    private void completeVerification(UserContext ctx) {
+        if (ctx.finished) return;
+
+        boolean success;
+        try {
+            success = compare(ctx.expectedResult, ctx.clientResult);
+        } catch (Exception e) {
+            fail(ctx, FailureType.COMPARE_ERROR, e);
+            return;
+        }
+
+        if (!success) {
+            fail(ctx, FailureType.RESULT_MISMATCH, null);
+            return;
+        }
+
+        succeed(ctx);
+    }
+
+    private void onTimeout(UserContext ctx) {
+        synchronized (ctx) {
+            if (!ctx.inProgress || ctx.finished) {
+                return;
+            }
+            fail(ctx, FailureType.TIMEOUT, null);
+        }
+    }
+
+    /* ---------------- 成功 / 失败处理 ---------------- */
+
+    private void succeed(UserContext ctx) {
+        ctx.finished = true;
+        ctx.inProgress = false;
+        cancelTimeout(ctx);
+        scheduleNext(ctx, false);
+    }
+
+    private void fail(UserContext ctx, FailureType type, Exception e) {
+        ctx.finished = true;
+        ctx.inProgress = false;
+        cancelTimeout(ctx);
+        notifyFailure(ctx.userId, formatReason(type, e));
+        removeUser(ctx.userId);
+    }
+
+    /* ---------------- 调度辅助 ---------------- */
+
+    private void scheduleTimeout(UserContext ctx) {
+        cancelTimeout(ctx);
+        ctx.timeoutTask = scheduler.schedule(
+                () -> onTimeout(ctx),
+                timeout,
+                TimeUnit.SECONDS
+        );
+    }
+
+    private void cancelTimeout(UserContext ctx) {
+        if (ctx.timeoutTask != null) {
+            ctx.timeoutTask.cancel(false);
+            ctx.timeoutTask = null;
+        }
+    }
+
+    private void scheduleNext(UserContext ctx, boolean immediate) {
+        if (immediate) {
+            scheduler.execute(() -> startVerification(ctx));
+        } else {
+            scheduler.schedule(
+                    () -> startVerification(ctx),
+                    interval,
+                    TimeUnit.SECONDS
+            );
+        }
     }
 }

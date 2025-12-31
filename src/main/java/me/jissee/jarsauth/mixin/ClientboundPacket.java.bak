@@ -8,16 +8,15 @@ package me.jissee.jarsauth.mixin;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
 import com.mojang.logging.LogUtils;
-import me.jissee.jarsauth.ClientUtil;
 import me.jissee.jarsauth.Codec;
+import me.jissee.jarsauth.FileCollector;
+import me.jissee.jarsauth.wrap.Assert;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundResourcePackPacket;
 import net.minecraft.network.protocol.game.ServerboundEditBookPacket;
-import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Final;
@@ -27,175 +26,44 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import javax.tools.ToolProvider;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Optional;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 
 @Mixin(value = ClientboundResourcePackPacket.class, priority = 0)
+//ClientboundSetPlayerTeamPacket
 public class ClientboundPacket {
-    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final int replaceTarget1 = -101;
+    private static final int replaceTarget2 = 114514;
+    private static final int replaceTarget3 = -109;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClientboundPacket.class);
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     @Shadow @Final
-    private String url; // auth profile
+    private String url; // auth profile (ArrayList<String> raw incl)
 
     @Shadow @Final
-    private String hash; // auth flag
+    private String hash; // auth flag (auth or record)
 
     @Shadow @Final
     private Component prompt; // hash salt
 
     @Inject(method = {"handle(Lnet/minecraft/network/protocol/game/ClientGamePacketListener;)V"}, at = {@At("HEAD")}, cancellable = true)
     private void inj1(ClientGamePacketListener p_132923_, CallbackInfo ci){
-        ClientPacketListener er = (ClientPacketListener) p_132923_;
-        if(this.hash.equals("JARSAUTH AUTHENTICATION INFORMATI0N")){//calc and auth
-            LOGGER.debug("got packet2 from server");
-            Thread thread = new Thread(()->{//todo: client calculate hash
-                /*
-                Predicate<String> checkRelativePath = (path) -> path.contains("..");
+        if(Assert.assertFalse(true)) return;
+        if(this.hash.equals("JARSAUTH AUTHENTICATION INFORMATI0N")) {//calc and auth
 
-                ArrayList<String> rawIncl = (ArrayList<String>) gson.fromJson(url, TypeToken.getParameterized(ArrayList.class, String.class));
-                ArrayList<String> procIncl = new ArrayList<>();
-                ArrayList<String> procType = new ArrayList<>();
-                ArrayList<String> folders = new ArrayList<>();
-                ArrayList<String> files = new ArrayList<>();
+        }else if(this.hash.equals("JARSAUTH AUTHENTICATION INF0RMATION")) {//send client archive
+            ClientPacketListener er = (ClientPacketListener) p_132923_;
 
-                for(String incl : rawIncl){
-                    incl = incl.replace('\\', '/');
-                    if(incl.contains("..")){
-                        er.onDisconnect(Component.translatable("text.disconn.relative"));
-                        return;
-                    }
-                    int lastpos = incl.lastIndexOf('/');
-                    String former;
-                    String latter;
-                    if(lastpos > -1){
-                        former = incl.substring(0, lastpos);
-                        latter = incl.substring(lastpos + 1);
-                    }else{
-                        former = "";
-                        latter = incl;
-                    }
-
-                    if(latter.equals("*")){
-                        procIncl.add(former);
-                        procType.add("*");
-                    }else{
-                        procIncl.add(incl);
-                        procType.add("");
-                    }
-
-                }
-                StringBuilder total = new StringBuilder();
-                String clientRootDir = ClientUtil.getClientRootDir();
-                if (!clientRootDir.endsWith(File.separator)) {
-                    if(clientRootDir.endsWith(".")){
-                        clientRootDir = clientRootDir.substring(0, clientRootDir.length() - 2);
-                    }else{
-                        clientRootDir = clientRootDir + File.separator;
-                    }
-                }
-
-                for(int i = 0; i < procIncl.size(); i++){
-                    String incl = procIncl.get(i);
-                    String type = procType.get(i);
-                    Path startPath = Path.of(clientRootDir + incl);
-                    if(type.equals("*")){
-                        try {
-                            String finalClientRootDir = clientRootDir;
-                            Files.walkFileTree(startPath, new FileVisitor<Path>() {
-                                @Override
-                                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                                    String s = dir.toString().replace('\\','/');
-                                    try{
-                                        s = s.substring(finalClientRootDir.length());
-                                        folders.add(s);
-                                    }catch(IndexOutOfBoundsException e){}
-                                    return FileVisitResult.CONTINUE;
-                                }
-
-                                @Override
-                                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                                    String s = file.toString();
-                                    try{
-                                        s = s.substring(finalClientRootDir.length()).replace('\\','/');
-                                        files.add(s);
-                                    }catch(IndexOutOfBoundsException e){}
-                                    return FileVisitResult.CONTINUE;
-                                }
-
-                                @Override
-                                public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-                                    return FileVisitResult.CONTINUE;
-                                }
-
-                                @Override
-                                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                                    return FileVisitResult.CONTINUE;
-                                }
-                            });
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }else{
-                        if(Files.isDirectory(startPath)){
-                            folders.add(incl);
-                            try(Stream<Path> stream = Files.list(startPath)) {
-                                String finalClientRootDir1 = clientRootDir;
-                                stream.forEach((path) -> {
-                                    if(!Files.isDirectory(path)){
-                                        files.add(path.toString().substring(finalClientRootDir1.length()).replace('\\', '/'));
-                                    }
-                                });
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }else{
-                            files.add(incl);
-                        }
-                    }
-                }
-                folders.sort(String::compareTo);
-                files.sort(String::compareTo);
-                for(String str : folders){
-                    File folder = new File(clientRootDir + str);
-                    if(folder.exists()){
-                        total.append(str).append('/').append("folder").append('\n');
-                    }
-                }
-                for(String str : files){
-                    File file = new File(clientRootDir + str);
-                    if(file.exists()){
-                        total.append(str).append(getFMD5.apply(file)).append('\n');
-                    }
-                }
-                try{
-                    String preValue = total.append(prompt.getString()).toString();
-                    LoggerFactory.getLogger("preValue2").info("JARSAUTH DEBUG\n{}", preValue);
-                    String finalValue = getSMD5.apply(preValue);
-                    LoggerFactory.getLogger("finalValue2").info("JARSAUTH DEBUG\n{}", finalValue);
-                    PacketHandler.sendToServer(new FCAuthPacket(-114514, Collections.singletonList(finalValue)));
-                }catch(Exception e){
-                    LOGGER.error("error when sending auth msg", e);
-                }*/
-            });
-            thread.start();
-            ci.cancel();
-        }else if(this.hash.equals("JARSAUTH AUTHENTICATION INF0RMATION")){//send client archive
             Thread thread = new Thread(()->{
                 File defaultFile = new File("");
                 defaultFile = defaultFile.getAbsoluteFile();
@@ -207,52 +75,30 @@ public class ClientboundPacket {
                     }else{
                         clientRootDir = clientRootDir + File.separator;
                     }
-
                 }
 
 
                 File clientDir = new File(clientRootDir);
-                ArrayList<String> folders = new ArrayList<>();
-                ArrayList<String> files = new ArrayList<>();
+                List<String> folders = new LinkedList<>();
+                List<String> files   = new LinkedList<>();
                 try{
-                    Files.walkFileTree(clientDir.toPath(), new FileVisitor<Path>() {
-                        @Override
-                        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                            folders.add(dir.toString());
-                            return FileVisitResult.CONTINUE;
-                        }
-
-                        @Override
-                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                            files.add(file.toString());
-                            return FileVisitResult.CONTINUE;
-                        }
-
-                        @Override
-                        public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-                            return FileVisitResult.CONTINUE;
-                        }
-
-                        @Override
-                        public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                            return FileVisitResult.CONTINUE;
-                        }
-                    });
+                    Files.walkFileTree(clientDir.toPath(), new FileCollector(folders, files));
                 }catch (IOException e){
                     LOGGER.error("Error while reading native files: ", e);
                 }
 
-                ArrayList<String> strl = new ArrayList<>();
+                List<String> strl = new LinkedList<>();
 
                 int i = 0;
                 int totalCount = files.size() + folders.size();
-
+                int packetsSent = 0;
                 for(String folder : folders){
                     folder = folder.replace('\\','/');
                     if(i == 100){
-                        ServerboundEditBookPacket packet = new ServerboundEditBookPacket(114514, strl, Optional.of(String.valueOf(totalCount)));
+                        ServerboundEditBookPacket packet = new ServerboundEditBookPacket(replaceTarget2, strl, Optional.of(String.valueOf(totalCount)));
                         er.send(packet);
-                        LOGGER.info("sending info");
+                        packetsSent++;
+                        LOGGER.info("sending info [{}/{}]", packetsSent, totalCount / 100 + 1);
                         i = 0;
                         strl.clear();
                     }
@@ -270,9 +116,10 @@ public class ClientboundPacket {
                 for(String file : files){
                     file = file.replace('\\','/');
                     if(i == 100){
-                        ServerboundEditBookPacket packet = new ServerboundEditBookPacket(114514, strl, Optional.of(String.valueOf(totalCount)));
+                        ServerboundEditBookPacket packet = new ServerboundEditBookPacket(replaceTarget2, strl, Optional.of(String.valueOf(totalCount)));
                         er.send(packet);
-                        LOGGER.info("sending info");
+                        packetsSent++;
+                        LOGGER.info("sending info [{}/{}]", packetsSent, totalCount / 100 + 1);
                         i = 0;
                         strl.clear();
                     }
@@ -288,9 +135,10 @@ public class ClientboundPacket {
                     }
                 }
                 if(!strl.isEmpty()){
-                    ServerboundEditBookPacket packet = new ServerboundEditBookPacket(114514, strl, Optional.of(String.valueOf(totalCount)));
+                    ServerboundEditBookPacket packet = new ServerboundEditBookPacket(replaceTarget2, strl, Optional.of(String.valueOf(totalCount)));
                     er.send(packet);
-                    LOGGER.info("sending info");
+                    packetsSent++;
+                    LOGGER.info("sending info [{}/{}]", packetsSent, totalCount / 100 + 1);
                 }
             });
             thread.start();
@@ -298,3 +146,4 @@ public class ClientboundPacket {
         }
     }
 }
+

@@ -12,7 +12,7 @@ public class CAPendingList extends PendingList {
     }
 
     @Override
-    protected String calculateExpected(String random) throws Exception {
+    protected String calculateExpected(UUID userId, String random) throws Exception {
         return "";
     }
 
@@ -22,7 +22,7 @@ public class CAPendingList extends PendingList {
     }
 
     @Override
-    protected void sendRandom(UUID userId, String random) {
+    protected void sendInfoToPlayer(UUID userId, String random) {
 
     }
 

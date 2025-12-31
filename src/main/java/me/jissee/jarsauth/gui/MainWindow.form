@@ -559,14 +559,6 @@
                   <toolTipText value=""/>
                 </properties>
               </component>
-              <component id="aacad" class="javax.swing.JLabel">
-                <constraints>
-                  <grid row="2" column="4" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <text resource-bundle="ui" key="config.sl.auto-remove"/>
-                </properties>
-              </component>
               <component id="36cff" class="javax.swing.JTextField" binding="fcTimeoutText">
                 <constraints>
                   <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="0" indent="0" use-parent-layout="false">
@@ -585,23 +577,6 @@
                 </constraints>
                 <properties>
                   <toolTipText resource-bundle="ui" key="config.unit.tip"/>
-                </properties>
-              </component>
-              <component id="e1a1f" class="javax.swing.JCheckBox" binding="slAutoRemove">
-                <constraints>
-                  <grid row="2" column="5" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <text value=""/>
-                </properties>
-              </component>
-              <component id="f052f" class="javax.swing.JLabel">
-                <constraints>
-                  <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <text resource-bundle="ui" key="config.ui.language"/>
-                  <toolTipText value=""/>
                 </properties>
               </component>
               <component id="45fe7" class="javax.swing.JComboBox" binding="languageComboBox">

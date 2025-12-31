@@ -10,8 +10,7 @@ public enum ConfigKey {
     CLIENT_AUTH_TIMEOUT("client-auth.timeout", 10),
 
     SERVER_LICENSE_ENABLED("server-license.enabled", 0),
-    SERVER_LICENSE_AUTO_REMOVE("server-license.auto-remove", 0),
-    SERVER_LICENSE_INTERVAL("server-license.interval", 20),
+    SERVER_LICENSE_INTERVAL("server-license.interval", 10),
 
     UI_LANGUAGE("ui.language", 0);
 
