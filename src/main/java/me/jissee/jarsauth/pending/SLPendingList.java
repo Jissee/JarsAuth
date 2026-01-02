@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public class SLPendingList extends PendingList {
     public SLPendingList(MinecraftServer server) {
-        super(server);
+        super(server, false);
     }
 
     @Override
@@ -17,6 +17,8 @@ public class SLPendingList extends PendingList {
 
     @Override
     protected String calculateExpected(UUID userId, String random) throws Exception {
+        onVerificationResponse(userId, "none");
+
         return "true";
     }
 
@@ -27,9 +29,7 @@ public class SLPendingList extends PendingList {
 
     @Override
     protected void sendInfoToPlayer(UUID userId, String random) {
-        server.getPlayerList().getPlayer(userId);
 
-        onVerificationResponse(userId, random);
     }
 
     @Override

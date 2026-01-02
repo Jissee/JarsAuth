@@ -9,10 +9,17 @@ import java.util.concurrent.*;
 import static me.jissee.jarsauth.data.TimeUtil.now;
 
 /**
- * 严格串行、单轮验证的 PendingList 实现
- * 保留原有抽象接口，不引入轮次 ID
+ * 严格串行、单轮验证的 PendingList
+ *
+ * 验证模式（构造期决定）：
+ * - clientRequired = true  : 客户端参与校验
+ * - clientRequired = false : 纯服务端校验
+ *
+ * 完全事件驱动（notify）模型
  */
 public abstract class PendingList {
+
+    /* ================= 失败类型 ================= */
 
     public enum FailureType {
         CALCULATION_ERROR("internal"),
@@ -31,6 +38,8 @@ public abstract class PendingList {
         }
     }
 
+    /* ================= Context（状态机） ================= */
+
     protected static final class UserContext {
         final UUID userId;
 
@@ -40,8 +49,8 @@ public abstract class PendingList {
         String expectedResult;
         String clientResult;
 
-        boolean inProgress;   // 当前是否存在未完成的验证
-        boolean finished;     // 本轮是否已裁决
+        boolean inProgress;
+        boolean finished;
 
         ScheduledFuture<?> timeoutTask;
 
@@ -49,9 +58,23 @@ public abstract class PendingList {
             this.userId = userId;
             this.lastVerificationTime = now();
         }
+
+        boolean expectedReady() {
+            return expectedResult != null;
+        }
+
+        boolean clientReady() {
+            return clientResult != null;
+        }
     }
 
+    /* ================= PendingList 级别配置 ================= */
+
     protected final MinecraftServer server;
+
+    /** 是否需要客户端参与验证（构造期决定） */
+    protected final boolean clientRequired;
+
     private final Map<UUID, UserContext> users = new ConcurrentHashMap<>();
 
     private long interval;
@@ -64,20 +87,32 @@ public abstract class PendingList {
                 return t;
             });
 
-    protected PendingList(MinecraftServer server) {
+    /* ================= 构造 ================= */
+
+    protected PendingList(MinecraftServer server, boolean clientRequired) {
         this.server = server;
+        this.clientRequired = clientRequired;
         reload();
     }
 
+    /* ================= 抽象接口 ================= */
 
-    protected String generateRandom(){
+    protected String generateRandom() {
         return UUID.randomUUID().toString();
     }
 
     protected abstract String calculateExpected(UUID userId, String random) throws Exception;
 
+    /**
+     * 裁决逻辑：
+     * - clientRequired == true  : expected vs client
+     * - clientRequired == false : 只看 expected（client 可能为 null）
+     */
     protected abstract boolean compare(String expected, String actual);
 
+    /**
+     * 仅在 clientRequired == true 时调用
+     */
     protected abstract void sendInfoToPlayer(UUID userId, String random);
 
     protected abstract void notifyFailure(UUID userId, String reason);
@@ -88,7 +123,7 @@ public abstract class PendingList {
 
     protected abstract long getTimeout();
 
-    /* ---------------- 生命周期 ---------------- */
+    /* ================= 生命周期 ================= */
 
     public void reload() {
         this.interval = getInterval();
@@ -112,56 +147,77 @@ public abstract class PendingList {
         }
     }
 
-    /* ---------------- 客户端响应入口 ---------------- */
+    /* ================= 客户端 notify ================= */
 
     public void onVerificationResponse(UUID userId, String clientResult) {
+        if (!clientRequired) {
+            // 纯服务端校验，不接受客户端返回
+            return;
+        }
+
         UserContext ctx = users.get(userId);
         if (ctx == null) return;
 
         synchronized (ctx) {
-            if (!ctx.inProgress || ctx.finished) {
-                return; // 已超时 / 已完成 / 非当前轮
-            }
+            if (!ctx.inProgress || ctx.finished) return;
 
             ctx.clientResult = clientResult;
-            completeVerification(ctx);
+            notifyContext(ctx);
         }
     }
 
-    /* ---------------- 核心流程 ---------------- */
+    /* ================= 核心流程 ================= */
 
     private void startVerification(UserContext ctx) {
         synchronized (ctx) {
-            if (ctx.inProgress) {
-                return; // 理论上不应发生，防御性检查
-            }
+            if (ctx.inProgress) return;
 
             ctx.inProgress = true;
             ctx.finished = false;
-            ctx.clientResult = null;
             ctx.expectedResult = null;
-            ctx.randomData = null;
+            ctx.clientResult = null;
 
             ctx.randomData = generateRandom();
             ctx.lastVerificationTime = now();
 
+            // 仅在需要客户端参与时发送 challenge
+            if (clientRequired) {
+                sendInfoToPlayer(ctx.userId, ctx.randomData);
+            }
+
+            scheduleTimeout(ctx);
+
             scheduler.execute(() -> {
-                synchronized (ctx) {
-                    try {
-                        sendInfoToPlayer(ctx.userId, ctx.randomData);
-                        ctx.expectedResult = calculateExpected(ctx.userId, ctx.randomData);
-                    } catch (Exception e) {
+                try {
+                    String expected = calculateExpected(ctx.userId, ctx.randomData);
+                    synchronized (ctx) {
+                        if (ctx.finished) return;
+                        ctx.expectedResult = expected;
+                        notifyContext(ctx);
+                    }
+                } catch (Exception e) {
+                    synchronized (ctx) {
                         fail(ctx, FailureType.CALCULATION_ERROR, e);
                     }
                 }
             });
-            scheduleTimeout(ctx);
         }
     }
 
-    private void completeVerification(UserContext ctx) {
+    /**
+     * Context 的唯一状态推进点
+     */
+    private void notifyContext(UserContext ctx) {
         if (ctx.finished) return;
+        if (!ctx.expectedReady()) return;
 
+        // 客户端参与模式下才等待 client
+        if (clientRequired && !ctx.clientReady()) return;
+
+        completeVerification(ctx);
+    }
+
+    private void completeVerification(UserContext ctx) {
         boolean success;
         try {
             success = compare(ctx.expectedResult, ctx.clientResult);
@@ -180,14 +236,12 @@ public abstract class PendingList {
 
     private void onTimeout(UserContext ctx) {
         synchronized (ctx) {
-            if (!ctx.inProgress || ctx.finished) {
-                return;
-            }
+            if (!ctx.inProgress || ctx.finished) return;
             fail(ctx, FailureType.TIMEOUT, null);
         }
     }
 
-    /* ---------------- 成功 / 失败处理 ---------------- */
+    /* ================= 成功 / 失败 ================= */
 
     private void succeed(UserContext ctx) {
         ctx.finished = true;
@@ -204,7 +258,7 @@ public abstract class PendingList {
         removeUser(ctx.userId);
     }
 
-    /* ---------------- 调度辅助 ---------------- */
+    /* ================= 调度辅助 ================= */
 
     private void scheduleTimeout(UserContext ctx) {
         cancelTimeout(ctx);

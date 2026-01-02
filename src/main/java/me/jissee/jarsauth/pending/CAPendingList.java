@@ -8,7 +8,7 @@ import java.util.UUID;
 public class CAPendingList extends PendingList {
 
     public CAPendingList(MinecraftServer server) {
-        super(server);
+        super(server, true);
     }
 
     @Override

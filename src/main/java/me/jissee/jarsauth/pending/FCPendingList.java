@@ -15,7 +15,7 @@ import java.util.UUID;
 public class FCPendingList extends PendingList {
 
     public FCPendingList(MinecraftServer server) {
-        super(server);
+        super(server, true);
     }
 
     @Override
