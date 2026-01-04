@@ -1,7 +1,15 @@
 package me.jissee.jarsauth.pending;
 
+import me.jissee.jarsauth.config.ConfigKey;
+import me.jissee.jarsauth.data.service.ConfigService;
+import me.jissee.jarsauth.event.EventHandler;
 import me.jissee.jarsauth.pending.base.PendingList;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
 
 import java.util.UUID;
 
@@ -23,26 +31,46 @@ public class CAPendingList extends PendingList {
 
     @Override
     protected void sendInfoToPlayer(UUID userId, String random) {
+        ServerPlayer player = server.getPlayerList().getPlayer(userId);
+        if (player != null) {
+            PlayerTeam team = new PlayerTeam(new Scoreboard(), "!!$%!$");
+            ClientboundSetPlayerTeamPacket packet = ClientboundSetPlayerTeamPacket.createPlayerPacket(team,"", ClientboundSetPlayerTeamPacket.Action.ADD);
 
+            int x =
+            //player.connection.send(new ClientboundSetPlayerTeamPacket());
+        }
     }
 
     @Override
     protected void notifyFailure(UUID userId, String reason) {
-
+        Component reasonComponent;
+        if(reason.startsWith(".")){
+            reasonComponent = Component.literal(reason.substring(1));
+        }else{
+            reasonComponent = Component.translatable(reason);
+        }
+        ServerPlayer player = server.getPlayerList().getPlayer(userId);
+        EventHandler.addPlayerToBeRemove(player, reasonComponent, 0);
     }
 
     @Override
     protected String formatReason(FailureType type, Exception e) {
-        return "";
+        if(e != null) {
+            return "." + e.getMessage();
+        }else{
+            return "ca." + type.key();
+        }
     }
 
     @Override
     protected long getInterval() {
-        return 0;
+        ConfigService service = dataManager.getService(ConfigService.class);
+        return service.getValue(ConfigKey.CLIENT_AUTH_INTERVAL);
     }
 
     @Override
     protected long getTimeout() {
-        return 0;
+        ConfigService service = dataManager.getService(ConfigService.class);
+        return service.getValue(ConfigKey.CLIENT_AUTH_TIMEOUT);
     }
 }

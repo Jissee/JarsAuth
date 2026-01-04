@@ -59,13 +59,13 @@ public class FCPendingList extends PendingList {
 
     @Override
     protected long getInterval() {
-        ConfigService service = DataManager.getServerInstance().getService(ConfigService.class);
+        ConfigService service = dataManager.getService(ConfigService.class);
         return service.getValue(ConfigKey.FILE_CHECKSUM_INTERVAL);
     }
 
     @Override
     protected long getTimeout() {
-        ConfigService service = DataManager.getServerInstance().getService(ConfigService.class);
+        ConfigService service = dataManager.getService(ConfigService.class);
         return service.getValue(ConfigKey.FILE_CHECKSUM_TIMEOUT);
     }
 }

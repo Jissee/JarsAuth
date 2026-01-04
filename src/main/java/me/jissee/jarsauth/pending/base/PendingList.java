@@ -1,5 +1,6 @@
 package me.jissee.jarsauth.pending.base;
 
+import me.jissee.jarsauth.data.DataManager;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.Map;
@@ -8,15 +9,6 @@ import java.util.concurrent.*;
 
 import static me.jissee.jarsauth.data.TimeUtil.now;
 
-/**
- * 严格串行、单轮验证的 PendingList
- *
- * 验证模式（构造期决定）：
- * - clientRequired = true  : 客户端参与校验
- * - clientRequired = false : 纯服务端校验
- *
- * 完全事件驱动（notify）模型
- */
 public abstract class PendingList {
 
     /* ================= 失败类型 ================= */
@@ -87,11 +79,14 @@ public abstract class PendingList {
                 return t;
             });
 
+    protected final DataManager dataManager;
+
     /* ================= 构造 ================= */
 
     protected PendingList(MinecraftServer server, boolean clientRequired) {
         this.server = server;
         this.clientRequired = clientRequired;
+        dataManager = DataManager.getServerInstance();
         reload();
     }
 

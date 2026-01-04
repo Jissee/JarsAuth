@@ -8,11 +8,10 @@
     "defaultRequire": 1
   },
   "mixins": [
-    "BlockMixin",
     "ServerboundPacketMixin",
+    "ClientboundPacketMixin",
     "ServerGUIMixin"
   ],
   "client":[
-    "ClientboundPacketMixin"
   ]
 }
