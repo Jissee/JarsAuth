@@ -97,51 +97,47 @@ public class Pipeline {
 
         StringBuilder exportInfo = new StringBuilder();
 
-        List<String> mixinClasses = configBuilder.getMixinClasses();
-        Map<String, Integer> replaceTargetValues = new HashMap<>();
-        Map<Integer, Integer> replaceDestValues = new HashMap<>();
+        List<String> originalMixinClassNames = configBuilder.getMixinClasses();
 
-        try(JarExecutor varCheckExecutor = new JarExecutor(inputFile)){
-            for(String mixinClass : mixinClasses) {
-                for(int i = 1; i <= STATIC_COUNT; i++){
-                    int finalI = i;
-                    varCheckExecutor.defineTask(new JarClassVarCheckTask<>(Integer.class, "me/jissee/jarsauth/mixin/" + mixinClass, "replaceTarget" + i, (found, itg)->{
-                        if(!found) {
-                            return;
-                        }
-                        replaceTargetValues.put("me/jissee/jarsauth/mixin/" + mixinClass + "#replaceTarget" + finalI, itg);
-                    }));
-                }
-            }
-            varCheckExecutor.execute();
-        } catch (RuntimeException e) {
-            exportInfo.append(Locales.getString("info.not.signable"));
-            return new Tuple<>(exportInfo.toString(), null);
-        }
+        int[] replaceTarget = new int[]{
+                -114,
+                -514,
+                -0114,
+                -0514,
+                -114514,
+                -1919,
+                -810,
+                -1919810
+        };
+        Set<Integer> replaceTargetValues = new HashSet<>(
+                Arrays.stream(replaceTarget)
+                .boxed()
+                .toList()
+        );
+        Map<Integer, Integer> replaceMapping = new HashMap<>();
+
 
         Random replaceRandom = new Random();
         int replaceRangeBase = replaceRandom.nextInt(Integer.MIN_VALUE + 1, COPY_NUM * -20);
         List<Integer> replaceCandidateRange = Range.getLinkedRange(replaceRangeBase, replaceRangeBase + COPY_NUM * 10);
         Collections.shuffle(replaceCandidateRange);
 
-        for(Integer value : replaceTargetValues.values()){
-            replaceDestValues.put(value, replaceCandidateRange.get(0));
+        for(Integer value : replaceTargetValues){
+            replaceMapping.put(value, replaceCandidateRange.get(0));
             replaceCandidateRange.remove(0);
         }
 
         try(JarExecutor replaceNumExecutor = new JarExecutor(inputFile)){
             JarClassNumModificationTask task = new JarClassNumModificationTask();
-            for(Map.Entry<String, Integer> entry : replaceTargetValues.entrySet()) {
-                String classFieldName = entry.getKey();
-                String[] strs = classFieldName.split("#");
-                String className = strs[0];
-                String fieldName = strs[1];
-                int target = entry.getValue();
-                int destValue = replaceDestValues.get(target);
-                task.add(className, target, destValue);
+            task.addTarget("me/jissee/jarsauth/mixin/*")
+                .addTarget("me/jissee/jarsauth/pending/*");
+
+            for(Integer oldValue : replaceTarget) {
+                int newValue = replaceMapping.get(oldValue);
+                task.addReplace(oldValue, newValue);
             }
             replaceNumExecutor.defineTask(task);
-            replaceNumExecutor.defineTask(new JarClassNumModificationTask().add("me/jissee/jarsauth/verification/Verification", 2, 0));
+            replaceNumExecutor.defineTask(new JarClassNumModificationTask().addTarget("me/jissee/jarsauth/verification/Verification").addReplace(2, 0));
             replaceNumExecutor.execute();
             replaceNumExecutor.export(signedFile);
             exportInfo.append(String.format(Locales.getString("info.exported.signed"), signedFile.getAbsolutePath())).append("\n");
@@ -149,17 +145,23 @@ public class Pipeline {
 
 
         try(JarExecutor expansionExecutor = new JarExecutor(inputFile)){
-            for(String mixinClass : mixinClasses) {
+            for(String mixinClass : originalMixinClassNames) {
                 expansionExecutor.defineTask(new JarClassDuplicationTask("me/jissee/jarsauth/mixin/" + mixinClass, "me/jissee/jarsauth/dummy/" + mixinClass + "Dummy", List.of(1)));
             }
-            expansionExecutor.defineTask(new JarClassNumModificationTask().add("me/jissee/jarsauth/dummy/*", 1, 0));
+            expansionExecutor.defineTask(new JarClassNumModificationTask().addTarget("me/jissee/jarsauth/dummy/*").addReplace(1, 0));
+
+            RandomStringGenerator generator = new RandomStringGenerator(COPY_NUM * 6, 20);
+            List<String> nameCandidate = generator.toList();
+
+
+
 
             List<Integer> allIndices = new ArrayList<>();
 
             int baseIndex = 0;
             Map<Integer,String> reverseMap = new HashMap<>();
 
-            for(String mixinClass : mixinClasses) {
+            for(String mixinClass : originalMixinClassNames) {
                 List<Integer> indicesForCurrentClass = Range.getLinkedRange(baseIndex + 1, baseIndex + COPY_NUM);
                 allIndices.add(baseIndex);
                 allIndices.addAll(indicesForCurrentClass);
@@ -203,7 +205,7 @@ public class Pipeline {
                         String originalClassFieldName = originalName + "#" + fieldName;
                         if(replaceTargetValues.containsKey(originalClassFieldName)){
                             int target = replaceTargetValues.get(originalClassFieldName);
-                            int destValue = replaceDestValues.get(target);
+                            int destValue = replaceMapping.get(target);
                             numModTask.add(midName, target, destValue);
                         }
                     }
@@ -222,8 +224,8 @@ public class Pipeline {
 
             exportInfo.append(String.format(Locales.getString("info.exported.expansion.map"), expansionMapFile.getAbsolutePath())).append('\n');
 
-            expansionExecutor.defineTask(new JarClassNumModificationTask().add("me/jissee/jarsauth/verification/Verification", 1, 0));
-            expansionExecutor.defineTask(new JarClassNumModificationTask().add("me/jissee/jarsauth/verification/Verification", 2, 0));
+            expansionExecutor.defineTask(new JarClassNumModificationTask().addTarget("me/jissee/jarsauth/verification/Verification").addReplace(1, 0));
+            expansionExecutor.defineTask(new JarClassNumModificationTask().addTarget("me/jissee/jarsauth/verification/Verification").addReplace(2, 0));
 
             JarClassStaticFinalFieldRemovalTask task = new JarClassStaticFinalFieldRemovalTask();
             for(int i = 0; i < allIndices.size(); i++){

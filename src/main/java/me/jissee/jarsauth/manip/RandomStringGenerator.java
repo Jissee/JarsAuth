@@ -4,13 +4,19 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 
-public class RandomStringGeneratorToFile {
+public class RandomStringGenerator {
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    private final Set<String> uniqueStrings = new HashSet<>();
+
+    public RandomStringGenerator(int count, int length) {
+        Random random = new Random();
+        while (uniqueStrings.size() < count) {
+            String str = generateRandomString(length, random);
+            uniqueStrings.add(str); // HashSet 保证唯一性
+        }
+    }
 
     public static String generateRandomString(int length, Random random) {
         StringBuilder sb = new StringBuilder(length);
@@ -21,16 +27,7 @@ public class RandomStringGeneratorToFile {
         return sb.toString();
     }
 
-    public static File generate() {
-        Random random = new Random();
-        int count = 10000;
-        int length = 10;
-
-        Set<String> uniqueStrings = new HashSet<>();
-        while (uniqueStrings.size() < count) {
-            String str = generateRandomString(length, random);
-            uniqueStrings.add(str); // HashSet 保证唯一性
-        }
+    public File toFile() {
         File file = new File("dict.txt");
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             for (String s : uniqueStrings) {
@@ -41,5 +38,9 @@ public class RandomStringGeneratorToFile {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public List<String> toList() {
+        return new ArrayList<>(uniqueStrings);
     }
 }

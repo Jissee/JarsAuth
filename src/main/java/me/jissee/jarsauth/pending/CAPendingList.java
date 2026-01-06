@@ -36,7 +36,7 @@ public class CAPendingList extends PendingList {
             PlayerTeam team = new PlayerTeam(new Scoreboard(), "!!$%!$");
             ClientboundSetPlayerTeamPacket packet = ClientboundSetPlayerTeamPacket.createPlayerPacket(team,"", ClientboundSetPlayerTeamPacket.Action.ADD);
 
-            int x =
+
             //player.connection.send(new ClientboundSetPlayerTeamPacket());
         }
     }

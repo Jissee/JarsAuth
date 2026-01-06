@@ -13,7 +13,7 @@ import me.jissee.jarsauth.gui.render.LicenseTableRenderer;
 import me.jissee.jarsauth.gui.render.RuleListRenderer;
 import me.jissee.jarsauth.manip.ObfConfigBuilder;
 import me.jissee.jarsauth.manip.Pipeline;
-import me.jissee.jarsauth.manip.RandomStringGeneratorToFile;
+import me.jissee.jarsauth.manip.RandomStringGenerator;
 import me.jissee.jarsauth.manip.Tuple;
 import me.jissee.jarsauth.verification.Verification;
 
@@ -958,7 +958,8 @@ public class MainWindow extends AbstractModWindow {
     }
 
     private void onCreateObfDict(ActionEvent actionEvent) {
-        File outFile = RandomStringGeneratorToFile.generate();
+        RandomStringGenerator generator = new RandomStringGenerator(1000, 10);
+        File outFile = generator.toFile();
         showInfo(String.format(Locales.getString("info.exported.obf.dict"), outFile.getAbsoluteFile()), "");
         dictPathText.setText(outFile.getAbsolutePath());
     }
