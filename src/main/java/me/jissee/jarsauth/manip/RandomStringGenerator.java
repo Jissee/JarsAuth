@@ -41,6 +41,6 @@ public class RandomStringGenerator {
     }
 
     public List<String> toList() {
-        return new ArrayList<>(uniqueStrings);
+        return new LinkedList<>(uniqueStrings);
     }
 }

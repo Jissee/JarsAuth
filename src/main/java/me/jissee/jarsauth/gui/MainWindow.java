@@ -952,8 +952,9 @@ public class MainWindow extends AbstractModWindow {
                 String exp = result.b().getAbsolutePath();
                 signedExpandedPathText.setText(exp);
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            int pausehere = 0;
+            showError(Locales.getString("info.export.execution.error") + "\n" + e, "");
         }
     }
 

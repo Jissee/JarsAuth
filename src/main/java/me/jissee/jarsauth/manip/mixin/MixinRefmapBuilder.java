@@ -54,15 +54,23 @@ public class MixinRefmapBuilder {
 
     public String toStringObf() {
         JsonObject root = new JsonObject();
+
         JsonObject mappings = new JsonObject();
-        mappingsBufferObf.forEach(mappings::add);
+        mappingsBufferObf.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(e -> mappings.add(e.getKey(), e.getValue()));
+        root.add("mappings", mappings);
+
         JsonObject data = new JsonObject();
         JsonObject searge = new JsonObject();
-        data$seargeBufferObf.forEach(searge::add);
-        root.add("mappings", mappings);
+        data$seargeBufferObf.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(e -> searge.add(e.getKey(), e.getValue()));
         data.add("searge", searge);
+
         root.add("data", data);
         return root.toString();
     }
+
 
 }

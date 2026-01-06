@@ -6,32 +6,17 @@ import org.objectweb.asm.*;
 import java.util.*;
 import java.util.function.Function;
 
-/**
- * 对指定类（或包通配符）批量替换整数常量
- * 目标类集合与替换规则集合彼此独立
- */
 public class JarClassNumModificationTask
         implements Function<List<JarEntryWrapper>, List<JarEntryWrapper>> {
 
-    /** 精确匹配的目标类（internal name，如 me/jissee/MyClass） */
-    private final Set<String> exactTargets = new HashSet<>();
-
-    /** 通配符目标（前缀，如 me/jissee/pkg/） */
-    private final Set<String> wildcardTargets = new HashSet<>();
-
-    /** 所有替换规则 */
-    private final List<ReplaceRule> replaceRules = new ArrayList<>();
-
     /* =========================
-       API
+       Target configuration
        ========================= */
 
-    /**
-     * 添加目标类或包通配符
-     * @param classInternalName 例如:
-     *  - me/jissee/MyClass
-     *  - me/jissee/pkg/*
-     */
+    private final Set<String> exactTargets = new HashSet<>();
+    private final Set<String> wildcardTargets = new HashSet<>();
+    private final List<ReplaceRule> replaceRules = new ArrayList<>();
+
     public JarClassNumModificationTask addTarget(String classInternalName) {
         if (classInternalName.endsWith("/*")) {
             wildcardTargets.add(
@@ -43,16 +28,13 @@ public class JarClassNumModificationTask
         return this;
     }
 
-    /**
-     * 添加整数替换规则
-     */
     public JarClassNumModificationTask addReplace(int oldNum, int newNum) {
         replaceRules.add(new ReplaceRule(oldNum, newNum));
         return this;
     }
 
     /* =========================
-       Task 执行
+       Task entry
        ========================= */
 
     @Override
@@ -69,9 +51,9 @@ public class JarClassNumModificationTask
                 if (shouldProcess(classInternalName) && !replaceRules.isEmpty()) {
                     try {
                         data = transformClass(data, classInternalName);
-                    } catch (Exception e) {
+                    } catch (Throwable t) {
                         System.out.println(
-                                "Failed to modify class: " + name + ", reason: " + e.getMessage()
+                                "Failed to modify class: " + name + ", reason: " + t.getMessage()
                         );
                     }
                 }
@@ -82,10 +64,6 @@ public class JarClassNumModificationTask
 
         return result;
     }
-
-    /* =========================
-       内部实现
-       ========================= */
 
     private boolean shouldProcess(String classInternalName) {
         if (exactTargets.contains(classInternalName)) {
@@ -99,21 +77,26 @@ public class JarClassNumModificationTask
         return false;
     }
 
+    /* =========================
+       ASM transform
+       ========================= */
+
     private byte[] transformClass(byte[] original, String classInternalName) {
         ClassReader reader = new ClassReader(original);
         ClassWriter writer = new ClassWriter(0);
 
-        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+        ClassVisitor cv = new ClassVisitor(Opcodes.ASM9, writer) {
 
-            /** 记录当前类中被替换过的 static final int 字段 */
-            final Map<String, Integer> fieldNewValues = new HashMap<>();
+            /** static final int 字段在当前类中的新值（字段名 -> 新值） */
+            final Map<String, Integer> staticFinalFieldValues = new HashMap<>();
 
             @Override
-            public FieldVisitor visitField(int access,
-                                           String fieldName,
-                                           String descriptor,
-                                           String signature,
-                                           Object value) {
+            public FieldVisitor visitField(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    Object value) {
 
                 if ((access & Opcodes.ACC_STATIC) != 0
                         && (access & Opcodes.ACC_FINAL) != 0
@@ -122,21 +105,22 @@ public class JarClassNumModificationTask
 
                     Integer replaced = tryReplace((Integer) value);
                     if (replaced != null) {
-                        fieldNewValues.put(fieldName, replaced);
+                        staticFinalFieldValues.put(name, replaced);
                         return super.visitField(
-                                access, fieldName, descriptor, signature, replaced
+                                access, name, descriptor, signature, replaced
                         );
                     }
                 }
-                return super.visitField(access, fieldName, descriptor, signature, value);
+                return super.visitField(access, name, descriptor, signature, value);
             }
 
             @Override
-            public MethodVisitor visitMethod(int access,
-                                             String name,
-                                             String descriptor,
-                                             String signature,
-                                             String[] exceptions) {
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
 
                 MethodVisitor mv = super.visitMethod(
                         access, name, descriptor, signature, exceptions
@@ -144,35 +128,15 @@ public class JarClassNumModificationTask
 
                 return new MethodVisitor(Opcodes.ASM9, mv) {
 
-                    @Override
-                    public void visitLdcInsn(Object value) {
-                        if (value instanceof Integer) {
-                            Integer replaced = tryReplace((Integer) value);
-                            if (replaced != null) {
-                                pushInteger(mv, replaced);
-                                return;
-                            }
-                        }
-                        super.visitLdcInsn(value);
-                    }
-
-                    @Override
-                    public void visitIntInsn(int opcode, int operand) {
-                        Integer replaced = tryReplace(operand);
-                        if (replaced != null) {
-                            pushInteger(mv, replaced);
-                            return;
-                        }
-                        super.visitIntInsn(opcode, operand);
-                    }
+                    /* ---------- 普通常量 ---------- */
 
                     @Override
                     public void visitInsn(int opcode) {
-                        Integer val = iconstValue(opcode);
-                        if (val != null) {
-                            Integer replaced = tryReplace(val);
-                            if (replaced != null) {
-                                pushInteger(mv, replaced);
+                        Integer v = iconstValue(opcode);
+                        if (v != null) {
+                            Integer r = tryReplace(v);
+                            if (r != null) {
+                                pushInt(mv, r);
                                 return;
                             }
                         }
@@ -180,30 +144,96 @@ public class JarClassNumModificationTask
                     }
 
                     @Override
-                    public void visitFieldInsn(int opcode,
-                                               String owner,
-                                               String fieldName,
-                                               String descriptor) {
+                    public void visitIntInsn(int opcode, int operand) {
+                        Integer r = tryReplace(operand);
+                        if (r != null) {
+                            pushInt(mv, r);
+                            return;
+                        }
+                        super.visitIntInsn(opcode, operand);
+                    }
+
+                    @Override
+                    public void visitLdcInsn(Object value) {
+                        if (value instanceof Integer) {
+                            Integer r = tryReplace((Integer) value);
+                            if (r != null) {
+                                pushInt(mv, r);
+                                return;
+                            }
+                        }
+                        super.visitLdcInsn(value);
+                    }
+
+                    /* ---------- static final 内联 ---------- */
+
+                    @Override
+                    public void visitFieldInsn(
+                            int opcode,
+                            String owner,
+                            String fieldName,
+                            String descriptor) {
 
                         if (opcode == Opcodes.GETSTATIC
                                 && owner.equals(classInternalName)
                                 && "I".equals(descriptor)) {
 
-                            Integer newVal = fieldNewValues.get(fieldName);
+                            Integer newVal = staticFinalFieldValues.get(fieldName);
                             if (newVal != null) {
-                                pushInteger(mv, newVal);
+                                pushInt(mv, newVal);
                                 return;
                             }
                         }
                         super.visitFieldInsn(opcode, owner, fieldName, descriptor);
                     }
+
+                    /* ---------- switch 支持 ---------- */
+
+                    @Override
+                    public void visitLookupSwitchInsn(
+                            Label dflt,
+                            int[] keys,
+                            Label[] labels) {
+
+                        int[] newKeys = new int[keys.length];
+                        for (int i = 0; i < keys.length; i++) {
+                            Integer r = tryReplace(keys[i]);
+                            newKeys[i] = r != null ? r : keys[i];
+                        }
+
+                        super.visitLookupSwitchInsn(dflt, newKeys, labels);
+                    }
+
+                    @Override
+                    public void visitTableSwitchInsn(
+                            int min,
+                            int max,
+                            Label dflt,
+                            Label... labels) {
+
+                        int count = max - min + 1;
+                        int[] keys = new int[count];
+
+                        for (int i = 0; i < count; i++) {
+                            int v = min + i;
+                            Integer r = tryReplace(v);
+                            keys[i] = r != null ? r : v;
+                        }
+
+                        // 强制转为 lookupswitch，避免连续性被破坏
+                        super.visitLookupSwitchInsn(dflt, keys, labels);
+                    }
                 };
             }
         };
 
-        reader.accept(visitor, 0);
+        reader.accept(cv, 0);
         return writer.toByteArray();
     }
+
+    /* =========================
+       Utilities
+       ========================= */
 
     private Integer tryReplace(int oldVal) {
         for (ReplaceRule rule : replaceRules) {
@@ -227,7 +257,7 @@ public class JarClassNumModificationTask
         };
     }
 
-    private static void pushInteger(MethodVisitor mv, int value) {
+    private static void pushInt(MethodVisitor mv, int value) {
         if (value >= -1 && value <= 5) {
             mv.visitInsn(Opcodes.ICONST_0 + value);
         } else if (value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE) {

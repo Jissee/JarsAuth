@@ -154,7 +154,7 @@ dependencies {
     }
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
 
-    /////////////////////////annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
+    annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
 
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime

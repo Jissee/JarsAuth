@@ -13,7 +13,7 @@ import java.nio.file.Files;
 import java.util.*;
 
 public class Pipeline {
-    private static final int COPY_NUM = 1000;
+    private static final int COPY_NUM = 1999;
     private static final int STATIC_COUNT = 5;
 
     private static MixinConfigBuilder configBuilder;
@@ -27,7 +27,7 @@ public class Pipeline {
         File inputFile = JarsAuth.getJarFile();
         if (inputFile.isDirectory()) {
             //in dev
-            inputFile = new File("/Users/sun/Desktop/Minecraft/develop/jarsauth/6.0/forge/forge-1.20.1-47.4.2-mdkbkup/build/libs/jarsauth-6.0-all.jar");
+            inputFile = new File("D:\\JarsAuth\\build\\libs\\jarsauth-6.0-all.jar");
         }
         String modFileName = inputFile.getName();
 
@@ -118,13 +118,13 @@ public class Pipeline {
 
 
         Random replaceRandom = new Random();
-        int replaceRangeBase = replaceRandom.nextInt(Integer.MIN_VALUE + 1, COPY_NUM * -20);
-        List<Integer> replaceCandidateRange = Range.getLinkedRange(replaceRangeBase, replaceRangeBase + COPY_NUM * 10);
-        Collections.shuffle(replaceCandidateRange);
+        int replaceRangeBase = replaceRandom.nextInt(Integer.MIN_VALUE + 1, Integer.MIN_VALUE / 2);
+        List<Integer> replaceCandidates = Range.getLinkedRange(replaceRangeBase, replaceRangeBase + COPY_NUM * 10);
+        Collections.shuffle(replaceCandidates);
 
         for(Integer value : replaceTargetValues){
-            replaceMapping.put(value, replaceCandidateRange.get(0));
-            replaceCandidateRange.remove(0);
+            replaceMapping.put(value, replaceCandidates.get(0));
+            replaceCandidates.remove(0);
         }
 
         try(JarExecutor replaceNumExecutor = new JarExecutor(inputFile)){
@@ -144,7 +144,7 @@ public class Pipeline {
         }
 
 
-        try(JarExecutor expansionExecutor = new JarExecutor(inputFile)){
+        try(JarExecutor expansionExecutor = new JarExecutor(signedFile)){
             for(String mixinClass : originalMixinClassNames) {
                 expansionExecutor.defineTask(new JarClassDuplicationTask("me/jissee/jarsauth/mixin/" + mixinClass, "me/jissee/jarsauth/dummy/" + mixinClass + "Dummy", List.of(1)));
             }
@@ -152,74 +152,69 @@ public class Pipeline {
 
             RandomStringGenerator generator = new RandomStringGenerator(COPY_NUM * 6, 20);
             List<String> nameCandidate = generator.toList();
-
-
-
-
-            List<Integer> allIndices = new ArrayList<>();
-
-            int baseIndex = 0;
-            Map<Integer,String> reverseMap = new HashMap<>();
+            StringBuilder expMap = new StringBuilder();
+            List<String> realNames = new ArrayList<>();
 
             for(String mixinClass : originalMixinClassNames) {
-                List<Integer> indicesForCurrentClass = Range.getLinkedRange(baseIndex + 1, baseIndex + COPY_NUM);
-                allIndices.add(baseIndex);
-                allIndices.addAll(indicesForCurrentClass);
-                String originalName = "me/jissee/jarsauth/mixin/" + mixinClass;
-                reverseMap.put(baseIndex, originalName);
-                indicesForCurrentClass.forEach(index -> reverseMap.put(index, originalName));
+                String obfName = nameCandidate.get(0);
+                nameCandidate.remove(0);
+                realNames.add(obfName);
+                expMap.append(mixinClass).append(" -> ").append(obfName).append("\n");
 
+                JarClassMotionTask task = new JarClassMotionTask().add("me/jissee/jarsauth/mixin/" + mixinClass, "me/jissee/jarsauth/mixin/" + obfName);
+                refmapBuilder.addObf("me/jissee/jarsauth/mixin/" + mixinClass, "me/jissee/jarsauth/mixin/" + obfName);
+                expansionExecutor.defineTask(task);
+            }
+
+
+            int baseIndex = 0;
+            Map<Integer, String> reverseMap = new HashMap<>();
+            for(String mixinClass : originalMixinClassNames) {
+                List<Integer> indicesForCurrentClass = Range.getLinkedRange(baseIndex, baseIndex + COPY_NUM);
+                indicesForCurrentClass.forEach(index -> {
+                    reverseMap.put(index, mixinClass);
+                });
                 expansionExecutor
-                        .defineTask(new JarClassMotionTask().add(originalName, "me/jissee/jarsauth/dummy/M" + baseIndex))
-                        .defineTask(new JarClassDuplicationTask("me/jissee/jarsauth/dummy/" + mixinClass + "Dummy", "me/jissee/jarsauth/dummy/M#", indicesForCurrentClass));
-
-
-                baseIndex = baseIndex + COPY_NUM;
+                        .defineTask(new JarClassDuplicationTask(
+                                "me/jissee/jarsauth/dummy/" + mixinClass + "Dummy",
+                                "me/jissee/jarsauth/dummy/M#",
+                                indicesForCurrentClass
+                        ));
+                baseIndex += COPY_NUM;
             }
 
-            Collections.shuffle(allIndices);
+            Set<String> usedObfNames = new HashSet<>();
+            for(int i = 0; i < baseIndex; i++) {
+                String obfName = nameCandidate.get(0);
+                nameCandidate.remove(0);
+                usedObfNames.add(obfName);
+                expansionExecutor.defineTask(new JarClassMotionTask()
+                        .add(
+                                "me/jissee/jarsauth/dummy/M" + i,
+                                "me/jissee/jarsauth/mixin/" + obfName
+                        )
+                );
+                refmapBuilder.addObf("me/jissee/jarsauth/mixin/" + reverseMap.get(i), "me/jissee/jarsauth/mixin/" + obfName);
+            }
 
 
+
+            Collection<Integer> occupied = replaceMapping.values();
             JarClassNumModificationTask numModTask = new JarClassNumModificationTask();
-            JarClassMotionTask motionTask = new JarClassMotionTask();
-            StringBuilder expMap = new StringBuilder();
-            for(int i = 0; i < allIndices.size(); i++){
-                String originalName = reverseMap.get(i);
-                String midName = "me/jissee/jarsauth/dummy/M" + i;
-                String finalName = "me/jissee/jarsauth/mixin/M" + allIndices.get(i);
 
-                if(i % COPY_NUM != 0){
-                    for(int fieldIndex = 1; fieldIndex <= STATIC_COUNT; fieldIndex++){
-                        String fieldName = "replaceTarget" + fieldIndex;
-                        String originalClassFieldName = originalName + "#" + fieldName;
-                        if(replaceTargetValues.containsKey(originalClassFieldName)){
-                            int target = replaceTargetValues.get(originalClassFieldName);
-                            int destValue = replaceCandidateRange.get(0);
-                            numModTask.add(midName, target, destValue);
-                            replaceCandidateRange.remove(0);
-                        }
-                    }
-                }else{
-                    for(int fieldIndex = 1; fieldIndex <= STATIC_COUNT; fieldIndex++){
-                        String fieldName = "replaceTarget" + fieldIndex;
-                        String originalClassFieldName = originalName + "#" + fieldName;
-                        if(replaceTargetValues.containsKey(originalClassFieldName)){
-                            int target = replaceTargetValues.get(originalClassFieldName);
-                            int destValue = replaceMapping.get(target);
-                            numModTask.add(midName, target, destValue);
-                        }
-                    }
-                }
-
-                motionTask.add(midName, finalName);
-                int finalI = i;
-                expansionExecutor.defineTask(new JarCustomTask(()->{
-                    refmapBuilder.addObf(reverseMap.get(finalI), finalName);
-                }));
-                expMap.append(i).append(" -> ").append(allIndices.get(i)).append("\n");
+            for(Integer value : occupied){
+                int replaceDest = replaceCandidates.get(0);
+                replaceCandidates.remove(0);
+                numModTask.addReplace(value, replaceDest);
             }
 
-            expansionExecutor.defineTask(numModTask).defineTask(motionTask);
+            for(String obfName : usedObfNames) {
+                numModTask.addTarget("me/jissee/jarsauth/mixin/" + obfName);
+            }
+
+
+
+            expansionExecutor.defineTask(numModTask);
             Files.writeString(expansionMapFile.toPath(), expMap.toString());
 
             exportInfo.append(String.format(Locales.getString("info.exported.expansion.map"), expansionMapFile.getAbsolutePath())).append('\n');
@@ -228,19 +223,24 @@ public class Pipeline {
             expansionExecutor.defineTask(new JarClassNumModificationTask().addTarget("me/jissee/jarsauth/verification/Verification").addReplace(2, 0));
 
             JarClassStaticFinalFieldRemovalTask task = new JarClassStaticFinalFieldRemovalTask();
-            for(int i = 0; i < allIndices.size(); i++){
-                for(int fieldIndex = 1; fieldIndex <= STATIC_COUNT; fieldIndex++){
-                    task.add("me/jissee/jarsauth/mixin/M" + i, "replaceTarget" + fieldIndex);
+
+            for(int fieldIndex = 1; fieldIndex <= STATIC_COUNT; fieldIndex++){
+                for(String obfName : realNames) {
+                    String internalName = "me/jissee/jarsauth/mixin/" + obfName;
+                    task.add(internalName, "replaceTarget" + fieldIndex);
+                }
+                for(String obfName : usedObfNames) {
+                    String internalName = "me/jissee/jarsauth/mixin/" + obfName;
+                    task.add(internalName, "replaceTarget" + fieldIndex);
                 }
             }
             expansionExecutor.defineTask(task);
 
-            //executor.defineTask(new JarBooleanObfuscationTask());
+            expansionExecutor.defineTask(new JarClassIntegerObfuscationTask());
 
             configBuilder.removeAll();
-            for(int i = 0; i < allIndices.size(); i++){
-                configBuilder.add("M" + i);
-            }
+            configBuilder.addAll(realNames);
+            configBuilder.addAll(usedObfNames);
             expansionExecutor.defineTask(new JarFileAdditionTask("jarsauth.mixins.json", JarFileAdditionTask.supplierWrap(()->configBuilder.toString())));
             expansionExecutor.defineTask(new JarFileAdditionTask("jarsauth.refmap.json", JarFileAdditionTask.supplierWrap(()->refmapBuilder.toStringObf())));
             expansionExecutor.execute();
