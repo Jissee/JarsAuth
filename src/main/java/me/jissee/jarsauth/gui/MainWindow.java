@@ -24,7 +24,6 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -484,7 +483,7 @@ public class MainWindow extends AbstractModWindow {
         int row = userIdTable.getSelectedRow();
         String player = userIdTable.getValueAt(row, 0).toString();
         String uuid = userIdTable.getValueAt(row, 1).toString();
-        UserIdService service = DataManager.getServerInstance().getService(UserIdService.class);
+        UserIdServerService service = DataManager.getServerInstance().getService(UserIdServerService.class);
         if (showConfirmation(Locales.getString("info.delete.confirm") + "(" + player + ", " + uuid + ")", "")) {
             service.removeUserId(player);
             updateClientIdTable();
@@ -571,7 +570,7 @@ public class MainWindow extends AbstractModWindow {
         model.addColumn(Locales.getString("label.client.id.player"));
         model.addColumn(Locales.getString("label.client.id"));
 
-        UserIdService service = DataManager.getServerInstance().getService(UserIdService.class);
+        UserIdServerService service = DataManager.getServerInstance().getService(UserIdServerService.class);
         Map<String, UUID> ids = service.getUserIds();
         for (Map.Entry<String, UUID> entry : ids.entrySet()) {
             model.addRow(new Object[]{entry.getKey(), entry.getValue()});

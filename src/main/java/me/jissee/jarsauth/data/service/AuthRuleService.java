@@ -1,5 +1,8 @@
 package me.jissee.jarsauth.data.service;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import me.jissee.jarsauth.data.ConnectionProvider;
 import me.jissee.jarsauth.data.dao.AuthRuleDAO;
 import me.jissee.jarsauth.data.model.AcceptedDetail;
@@ -9,6 +12,7 @@ import java.util.*;
 
 public class AuthRuleService implements Service {
     private final AuthRuleDAO dao;
+    private final Gson gson = new Gson();
 
     public AuthRuleService(ConnectionProvider provider) {
         this.dao = new AuthRuleDAO(provider);
@@ -121,6 +125,17 @@ public class AuthRuleService implements Service {
         }
 
         path.removeLast();
+    }
+
+    public String getAllRulesAsJson(){
+        List<String> groups = getAllGroups();
+        JsonObject root = new JsonObject();
+        for (String group : groups) {
+            AuthRuleEntry entry = getFlattenRuleEntry(group);
+            JsonArray json = gson.toJsonTree(entry.rules()).getAsJsonArray();
+            root.add(group, json);
+        }
+        return root.toString();
     }
 
 

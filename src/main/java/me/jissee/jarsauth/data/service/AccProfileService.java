@@ -4,7 +4,7 @@ import me.jissee.jarsauth.data.ConnectionProvider;
 import me.jissee.jarsauth.data.model.AcceptedDetail;
 import me.jissee.jarsauth.data.dao.AccGroupDAO;
 import me.jissee.jarsauth.data.dao.AccFileInfoDAO;
-import me.jissee.jarsauth.data.model.AccFileInfoEntry;
+import me.jissee.jarsauth.data.dao.AccFileInfoDAO.AccFileInfoEntry;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
@@ -13,7 +13,7 @@ public class AccProfileService implements Service {
     private final AccGroupDAO groupDAO;
     private final AccFileInfoDAO infoDAO;
 
-    private AcceptedDetail buffer;
+    private volatile AcceptedDetail buffer;
     private final Object bufferLock = new Object();
 
     public void initTable(){
@@ -120,7 +120,11 @@ public class AccProfileService implements Service {
 
     public boolean buffer(String key, String value, int totalCount){
         if(buffer == null){
-            buffer = createNewDetail();
+            synchronized (bufferLock) {
+                if(buffer == null){
+                    buffer = createNewDetail();
+                }
+            }
         }
         synchronized (bufferLock){
             if("folder".equals(value)){

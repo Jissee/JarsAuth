@@ -1,39 +1,98 @@
 package me.jissee.jarsauth.pending;
 
+import me.jissee.jarsauth.Codec;
 import me.jissee.jarsauth.config.ConfigKey;
-import me.jissee.jarsauth.data.DataManager;
+import me.jissee.jarsauth.data.FileSelector;
+import me.jissee.jarsauth.data.model.AcceptedDetail;
+import me.jissee.jarsauth.data.model.AuthRuleEntry;
+import me.jissee.jarsauth.data.model.FileList;
+import me.jissee.jarsauth.data.service.AccProfileService;
+import me.jissee.jarsauth.data.service.AuthRuleService;
 import me.jissee.jarsauth.data.service.ConfigService;
 import me.jissee.jarsauth.event.EventHandler;
-import me.jissee.jarsauth.pending.base.PendingList;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
 
-import java.util.UUID;
+import java.security.PublicKey;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
-public class FCPendingList extends PendingList {
+public class FCPendingList extends AbstractPendingList<List<String>> {
 
     public FCPendingList(MinecraftServer server) {
         super(server, true);
     }
 
     @Override
-    protected String calculateExpected(UUID userId, String random) throws Exception {
-        return "test123";
+    protected List<String> calculateExpected(UUID userId, String random) throws Exception {
+        AccProfileService service = dataManager.getService(AccProfileService.class);
+        AuthRuleService ruleService = dataManager.getService(AuthRuleService.class);
+        List<String> clientGroups = service.getRegisteredAccGroupNames();
+        List<String> results = new ArrayList<>();
+        for(String groupName : clientGroups){
+            FileSelector selector = new FileSelector("./");
+            AcceptedDetail detail = service.getGroup(groupName);
+            selector.setDataSource(detail);
+
+            AuthRuleEntry entry = ruleService.getFlattenRuleEntry(detail);
+            entry.rules().forEach(selector::addFilter);
+
+            FileList fileList = selector.getFileList();
+            String hash = fileList.hash(detail, random);
+            results.add(hash);
+        }
+        return results;
     }
 
     @Override
-    protected boolean compare(String expected, String actual) {
-        return expected.equals(actual);
+    protected boolean compare(UserContext ctx, List<String> expected, List<String> actual) {
+        if(expected.isEmpty()){
+            return true;
+        }
+        Set<String> expectedSet = new HashSet<>(expected);
+        Set<String> actualSet =
+                actual.stream().map(sha256 -> {
+                    try {
+                        byte[] byteShaEnc = Codec.hexToBytes(sha256);
+                        byte[] byteSha = Codec.decrypt(byteShaEnc, Codec.getPrivateKey(ctx.key));
+                        return Codec.bytesToHex(byteSha);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }).collect(Collectors.toSet());
+
+        expectedSet.retainAll(actualSet);
+        return !expectedSet.isEmpty();
     }
 
     @Override
-    protected void sendInfoToPlayer(UUID userId, String random) {
-        ServerPlayer player = server.getPlayerList().getPlayer(userId);
+    protected void sendInfoToPlayer(UserContext ctx, String random) {
+        ServerPlayer player = server.getPlayerList().getPlayer(ctx.userId);
 
         if (player == null) return;
-        //player.connection.send(new ClientboundResourcePackPacket());
+        int flag = -514;
+        PlayerTeam team = new PlayerTeam(new Scoreboard(), "!!$%!$" + flag);
+        Collection<String> rules = team.getPlayers();
+        AuthRuleService service = dataManager.getService(AuthRuleService.class);
+        String json = service.getAllRulesAsJson();
+        rules.add(json);
+        rules.add("[" + random + "]");
+        try {
+            PublicKey key = Codec.getKey();
+            ctx.key = key;
+            byte[] keyArray = key.getEncoded();
+            rules.add("<" + Codec.bytesToHex(keyArray) + ">");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        ClientboundSetPlayerTeamPacket packet =
+                ClientboundSetPlayerTeamPacket.createAddOrModifyPacket(team, true);
+        player.connection.send(packet);
     }
 
     @Override

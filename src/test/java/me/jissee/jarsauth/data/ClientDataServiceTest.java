@@ -1,7 +1,6 @@
 package me.jissee.jarsauth.data;
 
-import me.jissee.jarsauth.data.DataManager;
-import me.jissee.jarsauth.data.service.UserIdClientService;
+import me.jissee.jarsauth.data.service.ClientDataService;
 import org.junit.jupiter.api.*;
 
 import java.util.Optional;
@@ -9,15 +8,15 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class UserIdClientServiceTest {
+class ClientDataServiceTest {
 
     private static DataManager dataManager;
-    private static UserIdClientService clientService;
+    private static ClientDataService clientService;
 
     @BeforeEach
     void setup() {
         dataManager = new DataManager("memory:", false); // 使用内存数据库 + 客户端模式
-        clientService = dataManager.getService(UserIdClientService.class);
+        clientService = dataManager.getService(ClientDataService.class);
     }
 
     @Test

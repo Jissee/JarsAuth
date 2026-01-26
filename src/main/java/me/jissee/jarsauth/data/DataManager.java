@@ -2,7 +2,6 @@ package me.jissee.jarsauth.data;
 
 import me.jissee.jarsauth.data.service.*;
 
-import java.lang.reflect.Constructor;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -51,7 +50,7 @@ public class DataManager {
         registerService(AccProfileService.class, AccProfileService::new);
         registerService(AuthRuleService.class, AuthRuleService::new);
         registerService(ServerIdService.class, ServerIdService::new);
-        registerService(UserIdService.class, UserIdService::new);
+        registerService(UserIdServerService.class, UserIdServerService::new);
         registerService(ServerLicenseService.class, ServerLicenseService::new);
         registerService(LicenseGroupRuleService.class, LicenseGroupRuleService::new);
         registerService(LicenseGroupService.class, LicenseGroupService::new);
@@ -64,7 +63,7 @@ public class DataManager {
     }
 
     private void registerClient(){
-        registerService(UserIdClientService.class, UserIdClientService::new);
+        registerService(ClientDataService.class, ClientDataService::new);
     }
 
     private String getConnectionStr(){

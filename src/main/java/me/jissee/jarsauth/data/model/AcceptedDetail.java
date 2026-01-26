@@ -34,17 +34,4 @@ public record AcceptedDetail(
     public int getTotalCount(){
         return folders.size() + files.size();
     }
-
-    @Override
-    public @NotNull String toString() {
-        StringBuilder sb = new StringBuilder();
-        folders.sort(String::compareTo);
-        for(String folder : folders){
-            sb.append(folder).append(" (folder)").append("\n");
-        }
-        for(String file : files.keySet()){
-            sb.append(file).append(" -> ").append(files.get(file)).append("\n");
-        }
-        return sb.toString();
-    }
 }

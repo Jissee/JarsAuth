@@ -1,18 +1,17 @@
 package me.jissee.jarsauth.data.service;
 
 import me.jissee.jarsauth.data.ConnectionProvider;
-import me.jissee.jarsauth.data.dao.UserIdDAO;
+import me.jissee.jarsauth.data.dao.UserIdServerDAO;
 
-import java.sql.Connection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-public class UserIdService implements Service {
-    private final UserIdDAO dao;
+public class UserIdServerService implements Service {
+    private final UserIdServerDAO dao;
 
-    public UserIdService(ConnectionProvider provider) {
-        this.dao = new UserIdDAO(provider);
+    public UserIdServerService(ConnectionProvider provider) {
+        this.dao = new UserIdServerDAO(provider);
     }
 
     public boolean hasUserId(String userName){
@@ -20,9 +19,13 @@ public class UserIdService implements Service {
         return got.isPresent();
     }
 
-    public UUID getOrCreateUserId(String userName) {
+    public Optional<UUID> getOrCreateUserId(String userName) {
         Optional<UUID> got = dao.getUserId(userName);
-        return got.orElseGet(() -> dao.saveUserId(userName, UUID.randomUUID()));
+        if (got.isPresent()) {
+            return got;
+        }else {
+            return Optional.of(dao.saveUserId(userName, UUID.randomUUID()));
+        }
     }
 
     public Map<String, UUID> getUserIds() {

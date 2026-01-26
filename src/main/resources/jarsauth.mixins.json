@@ -9,9 +9,9 @@
   },
   "mixins": [
     "ServerboundPacketMixin",
-    "ClientboundPacketMixin",
     "ServerGUIMixin"
   ],
   "client":[
+    "ClientboundPacketMixin"
   ]
 }

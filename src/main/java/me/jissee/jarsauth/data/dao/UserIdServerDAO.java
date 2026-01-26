@@ -8,10 +8,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 
-public class UserIdDAO implements DAO{
+public class UserIdServerDAO implements DAO{
     private final ConnectionProvider provider;
 
-    public UserIdDAO(ConnectionProvider provider) {
+    public UserIdServerDAO(ConnectionProvider provider) {
         this.provider = provider;
     }
 

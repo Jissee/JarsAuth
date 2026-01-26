@@ -3,13 +3,12 @@ package me.jissee.jarsauth.data.service;
 import me.jissee.jarsauth.data.ConnectionProvider;
 import me.jissee.jarsauth.data.dao.UserIdClientDAO;
 
-import java.sql.Connection;
 import java.util.Optional;
 import java.util.UUID;
 
-public class UserIdClientService implements Service {
+public class ClientDataService implements Service {
     private final UserIdClientDAO dao;
-    public UserIdClientService(ConnectionProvider provider) {
+    public ClientDataService(ConnectionProvider provider) {
         this.dao = new UserIdClientDAO(provider);
     }
 

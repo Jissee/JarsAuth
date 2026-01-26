@@ -145,12 +145,16 @@ dependencies {
 
     minecraftLibrary "org.xerial:sqlite-jdbc:3.49.1.0"
     minecraftLibrary "com.jetbrains.intellij.java:java-gui-forms-rt:253.28294.357"
+    minecraftLibrary "de.mkammerer:argon2-jvm:2.11"
 
     runtimeOnly jarJar(group: 'org.xerial', name: 'sqlite-jdbc', version: '[3.49.1.0,3.49.1.1)'){
         jarJar.pin(it, "3.49.1.0")
     }
     runtimeOnly jarJar(group: 'com.jetbrains.intellij.java', name: 'java-gui-forms-rt', version: '[253.28294.357,253.28294.358)'){
         jarJar.pin(it, "253.28294.357")
+    }
+    runtimeOnly jarJar(group: 'de.mkammerer', name: 'argon2-jvm', version:'[2.11,2.12)'){
+        jarJar.pin(it, "2.11")
     }
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
 

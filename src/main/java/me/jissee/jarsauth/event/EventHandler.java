@@ -1,5 +1,7 @@
 package me.jissee.jarsauth.event;
 
+import me.jissee.jarsauth.JarsAuth;
+import me.jissee.jarsauth.ModCommand;
 import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.config.VolatileConfig;
 import me.jissee.jarsauth.data.DataManager;
@@ -7,30 +9,40 @@ import me.jissee.jarsauth.data.service.ConfigService;
 import me.jissee.jarsauth.pending.CAPendingList;
 import me.jissee.jarsauth.pending.FCPendingList;
 import me.jissee.jarsauth.pending.SLPendingList;
-import me.jissee.jarsauth.pending.base.PendingList;
+import me.jissee.jarsauth.pending.AbstractPendingList;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundResourcePackPacket;
+import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+import javax.crypto.IllegalBlockSizeException;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static com.mojang.text2speech.Narrator.LOGGER;
 
 public class EventHandler {
     private static final Queue<ServerPlayer> kickList = new ArrayDeque<>();
     private static final Queue<Component> reasons = new ArrayDeque<>();
     private static final Queue<IntHolder> delayTicks = new ArrayDeque<>();
 
-    private static final List<PendingList> pendingLists = new ArrayList<>();
+    private static final Map<Class<? extends AbstractPendingList<?>>, AbstractPendingList<?>> pendingLists = new ConcurrentHashMap<>();
     private static final DataManager dataManager = DataManager.getServerInstance();
     private static final ConfigService configService = dataManager.getService(ConfigService.class);
 
-    private static DedicatedServer server;
     @SubscribeEvent
     public static void onServerStart(ServerStartedEvent event){
         MinecraftServer server = event.getServer();
@@ -40,29 +52,17 @@ public class EventHandler {
             long cae = configService.getValue(ConfigKey.CLIENT_AUTH_ENABLED);
             long sle = configService.getValue(ConfigKey.SERVER_LICENSE_ENABLED);
             if(fce != 0){
-                pendingLists.add(new FCPendingList(server));
+                pendingLists.put(FCPendingList.class, new FCPendingList(server));
             }
             if(cae != 0){
-                pendingLists.add(new CAPendingList(server));
+                pendingLists.put(CAPendingList.class, new CAPendingList(server));
             }
             if(sle != 0){
-                pendingLists.add(new SLPendingList(server));
+                pendingLists.put(SLPendingList.class, new SLPendingList(server));
             }
-        }
-        /*
-        if(server instanceof DedicatedServer dserver){
-            serverSaveDir = server.getWorldPath(LevelResource.ROOT) + File.separator;
-            reloadSettings();
-            reloadDetails();
-            FCPendingList.getIndependentThread().start();
-            CAPendingList.getIndependentThread().start();
-            SLPendingList.getIndependentThread().start();
-            Description.extractAll(serverSaveDir);
-            EventHandler.server = dserver;
+            File jar = JarsAuth.getJarFile();
 
-            File jar = JarCopyTool.getJarFile();
-
-            Path dest = Path.of(serverSaveDir + jar.getName());
+            Path dest = Path.of("./" + jar.getName());
 
             if(jar.isFile() && jar.exists() && !Files.exists(dest)){
                 try {
@@ -71,7 +71,7 @@ public class EventHandler {
                     LOGGER.error("Cannot copy jar file", e);
                 }
             }
-        }*/
+        }
     }
 
 
@@ -79,48 +79,37 @@ public class EventHandler {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event){
         Player plr = event.getEntity();
         if(plr instanceof ServerPlayer svplr){
-            pendingLists.forEach(pendingList -> pendingList.addUser(svplr.getUUID()));
+
             if(configService.getValue(ConfigKey.FILE_CHECKSUM_ENABLED) == 1){
                 if(VolatileConfig.getInstance().ifThisVariableIsTrueThenTheServerIsInRecordingModeOtherwiseTheServerIsInAuthenticatingMode().get()){
                     if(Objects.requireNonNull(svplr.getServer()).getPlayerCount() > 1){
                         svplr.connection.disconnect(Component.translatable("text.disconn.recording"));
                     }else{
-                        ClientboundResourcePackPacket packet = new ClientboundResourcePackPacket("null", "JARSAUTH AUTHENTICATION INF0RMATION", false, Component.empty());
+                        Scoreboard scoreboard = new Scoreboard();
+                        int flag = -114;
+                        PlayerTeam team = new PlayerTeam(scoreboard, "!!$%!$" + flag);
+                        ClientboundSetPlayerTeamPacket packet =
+                                ClientboundSetPlayerTeamPacket.createAddOrModifyPacket(team, true);
                         svplr.connection.send(packet);
                     }
-                }
-            }
-            /*
-            if(StaticConfig.getInstance().getBoolean(ConfigKey.FILE_CHECKSUM_ENABLED)){
-                if(VolatileConfig.getInstance().ifThisVariableIsTrueThenTheServerIsInRecordingModeOtherwiseTheServerIsInAuthenticatingMode().get()){
-                    if(Objects.requireNonNull(svplr.getServer()).getPlayerCount() > 1){
-                        svplr.connection.disconnect(Component.translatable("text.disconn.recording"));
-                    }else{
-                        ClientboundResourcePackPacket packet = new ClientboundResourcePackPacket("null", "JARSAUTH AUTHENTICATION INF0RMATION", false, Component.empty());
-                        svplr.connection.send(packet);
-                    }
-                    //Compatibility.sendModPacket(svplr, packet);
                 }else{
-                    //FCPendingList.getInstance().playerLogin(svplr);
+                    getPendingList(FCPendingList.class).addUser(svplr.getUUID());
                 }
             }
-
-            if(Settings.getClientAuthSetting().isEnabled()){
-                //CAPendingList.getInstance().playerLogin(svplr);
+            if(configService.getValue(ConfigKey.CLIENT_AUTH_ENABLED) == 1){
+                getPendingList(CAPendingList.class).addUser(svplr.getUUID());
             }
-
-            if(Settings.getServerLicenseSetting().isEnabled()){
-                SLPendingList.getInstance().playerLogin(svplr);
+            if(configService.getValue(ConfigKey.SERVER_LICENSE_ENABLED) == 1){
+                getPendingList(SLPendingList.class).addUser(svplr.getUUID());
             }
-
- */
         }
     }
+
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event){
         Player plr = event.getEntity();
         if(plr instanceof ServerPlayer svplr){
-            pendingLists.forEach(pendingList -> pendingList.removeUser(svplr.getUUID()));
+            pendingLists.values().forEach(pendingList -> pendingList.removeUser(svplr.getUUID()));
         }
     }
 
@@ -149,6 +138,11 @@ public class EventHandler {
         }
     }
 
+    @SubscribeEvent
+    public static void onRegisterCommands(RegisterCommandsEvent event){
+        ModCommand.register(event.getDispatcher());
+    }
+
     public static void addPlayerToBeRemove(ServerPlayer player, Component reason, int delayTick){
         synchronized (kickList){
             kickList.add(player);
@@ -157,20 +151,9 @@ public class EventHandler {
         }
     }
 
-    public static void reloadSettings(){
-        /*
-        Settings.loadAllSettings(serverSaveDir);
-        Settings.printAll();
-        LOGGER.info("Settings reloaded");
-        */
-    }
-
-    public static void reloadDetails(){
-        /*
-        ClientDetail.reloadDetails(serverSaveDir);
-        LOGGER.info("Client details reloaded");
-
-         */
+    @SuppressWarnings("unchecked")
+    public static <T extends AbstractPendingList<?>> T getPendingList(Class<T> clazz){
+        return (T) pendingLists.get(clazz);
     }
 
     private static class IntHolder{

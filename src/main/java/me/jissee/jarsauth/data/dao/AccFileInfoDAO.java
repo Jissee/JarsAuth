@@ -1,7 +1,6 @@
 package me.jissee.jarsauth.data.dao;
 
 import me.jissee.jarsauth.data.ConnectionProvider;
-import me.jissee.jarsauth.data.model.AccFileInfoEntry;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -9,6 +8,10 @@ import java.util.List;
 import java.util.Map;
 
 public class AccFileInfoDAO implements DAO {
+    public record AccFileInfoEntry(
+            String key,
+            String value
+    ) {}
     private final ConnectionProvider provider;
 
     public AccFileInfoDAO(ConnectionProvider provider) {

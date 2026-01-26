@@ -1,11 +1,9 @@
 package me.jissee.jarsauth.pending;
 
 import me.jissee.jarsauth.config.ConfigKey;
-import me.jissee.jarsauth.data.model.ServerLicenseInstance;
 import me.jissee.jarsauth.data.service.ConfigService;
 import me.jissee.jarsauth.data.service.ServerLicenseService;
 import me.jissee.jarsauth.event.EventHandler;
-import me.jissee.jarsauth.pending.base.PendingList;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -13,7 +11,7 @@ import net.minecraft.world.entity.player.Player;
 
 import java.util.UUID;
 
-public class SLPendingList extends PendingList {
+public class SLPendingList extends AbstractPendingList<String> {
     public SLPendingList(MinecraftServer server) {
         super(server, false);
     }
@@ -37,12 +35,12 @@ public class SLPendingList extends PendingList {
     }
 
     @Override
-    protected boolean compare(String expected, String actual) {
+    protected boolean compare(UserContext ctx, String expected, String actual) {
         return "true".equals(expected);
     }
 
     @Override
-    protected void sendInfoToPlayer(UUID userId, String random) {
+    protected void sendInfoToPlayer(UserContext ctx, String random) {
         // ignored
     }
 

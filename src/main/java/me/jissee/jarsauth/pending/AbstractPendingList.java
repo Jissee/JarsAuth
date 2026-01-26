@@ -1,21 +1,23 @@
-package me.jissee.jarsauth.pending.base;
+package me.jissee.jarsauth.pending;
 
 import me.jissee.jarsauth.data.DataManager;
 import net.minecraft.server.MinecraftServer;
 
+import java.security.PublicKey;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.*;
 
 import static me.jissee.jarsauth.data.TimeUtil.now;
 
-public abstract class PendingList {
+public abstract class AbstractPendingList<T> {
 
     /* ================= 失败类型 ================= */
 
     public enum FailureType {
         CALCULATION_ERROR("internal"),
-        COMPARE_ERROR("mismatch"),
+        COMPARE_ERROR("cmp.error"),
         TIMEOUT("timeout"),
         RESULT_MISMATCH("mismatch");
 
@@ -32,14 +34,14 @@ public abstract class PendingList {
 
     /* ================= Context（状态机） ================= */
 
-    protected static final class UserContext {
+    protected final class UserContext {
         final UUID userId;
-
         long lastVerificationTime;
-
+        PublicKey key;
         String randomData;
-        String expectedResult;
-        String clientResult;
+
+        T expectedResult;
+        T clientResult;
 
         boolean inProgress;
         boolean finished;
@@ -69,9 +71,6 @@ public abstract class PendingList {
 
     private final Map<UUID, UserContext> users = new ConcurrentHashMap<>();
 
-    private long interval;
-    private long timeout;
-
     private final ScheduledExecutorService scheduler =
             Executors.newScheduledThreadPool(2, r -> {
                 Thread t = new Thread(r);
@@ -83,11 +82,10 @@ public abstract class PendingList {
 
     /* ================= 构造 ================= */
 
-    protected PendingList(MinecraftServer server, boolean clientRequired) {
+    protected AbstractPendingList(MinecraftServer server, boolean clientRequired) {
         this.server = server;
         this.clientRequired = clientRequired;
         dataManager = DataManager.getServerInstance();
-        reload();
     }
 
     /* ================= 抽象接口 ================= */
@@ -96,19 +94,19 @@ public abstract class PendingList {
         return UUID.randomUUID().toString();
     }
 
-    protected abstract String calculateExpected(UUID userId, String random) throws Exception;
+    protected abstract T calculateExpected(UUID userId, String random) throws Exception;
 
     /**
      * 裁决逻辑：
      * - clientRequired == true  : expected vs client
      * - clientRequired == false : 只看 expected（client 可能为 null）
      */
-    protected abstract boolean compare(String expected, String actual);
+    protected abstract boolean compare(UserContext context, T expected, T actual);
 
     /**
      * 仅在 clientRequired == true 时调用
      */
-    protected abstract void sendInfoToPlayer(UUID userId, String random);
+    protected abstract void sendInfoToPlayer(UserContext ctx, String random);
 
     protected abstract void notifyFailure(UUID userId, String reason);
 
@@ -119,11 +117,6 @@ public abstract class PendingList {
     protected abstract long getTimeout();
 
     /* ================= 生命周期 ================= */
-
-    public void reload() {
-        this.interval = getInterval();
-        this.timeout = getTimeout();
-    }
 
     public void addUser(UUID userId) {
         UserContext ctx = new UserContext(userId);
@@ -144,7 +137,7 @@ public abstract class PendingList {
 
     /* ================= 客户端 notify ================= */
 
-    public void onVerificationResponse(UUID userId, String clientResult) {
+    public void onVerificationResponse(UUID userId, T clientResult) {
         if (!clientRequired) {
             // 纯服务端校验，不接受客户端返回
             return;
@@ -177,14 +170,14 @@ public abstract class PendingList {
 
             // 仅在需要客户端参与时发送 challenge
             if (clientRequired) {
-                sendInfoToPlayer(ctx.userId, ctx.randomData);
+                sendInfoToPlayer(ctx, ctx.randomData);
             }
 
             scheduleTimeout(ctx);
 
             scheduler.execute(() -> {
                 try {
-                    String expected = calculateExpected(ctx.userId, ctx.randomData);
+                    T expected = calculateExpected(ctx.userId, ctx.randomData);
                     synchronized (ctx) {
                         if (ctx.finished) return;
                         ctx.expectedResult = expected;
@@ -215,7 +208,7 @@ public abstract class PendingList {
     private void completeVerification(UserContext ctx) {
         boolean success;
         try {
-            success = compare(ctx.expectedResult, ctx.clientResult);
+            success = compare(ctx, ctx.expectedResult, ctx.clientResult);
         } catch (Exception e) {
             fail(ctx, FailureType.COMPARE_ERROR, e);
             return;
@@ -259,7 +252,7 @@ public abstract class PendingList {
         cancelTimeout(ctx);
         ctx.timeoutTask = scheduler.schedule(
                 () -> onTimeout(ctx),
-                timeout,
+                getTimeout(),
                 TimeUnit.SECONDS
         );
     }
@@ -277,9 +270,18 @@ public abstract class PendingList {
         } else {
             scheduler.schedule(
                     () -> startVerification(ctx),
-                    interval,
+                    getInterval(),
                     TimeUnit.SECONDS
             );
+        }
+    }
+
+    public Optional<PublicKey> getPublicKeyForUser(UUID uuid){
+        UserContext ctx = users.get(uuid);
+        if (ctx == null){
+            return Optional.empty();
+        }else{
+            return Optional.ofNullable(ctx.key);
         }
     }
 }
