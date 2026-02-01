@@ -1,14 +1,9 @@
 package me.jissee.jarsauth.gui;
 
-import me.jissee.jarsauth.JarsAuth;
-
 import java.io.*;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.security.CodeSource;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;

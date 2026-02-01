@@ -1,10 +1,10 @@
 package me.jissee.jarsauth.data.service;
 
 import me.jissee.jarsauth.data.ConnectionProvider;
-import me.jissee.jarsauth.data.model.AcceptedDetail;
-import me.jissee.jarsauth.data.dao.AccGroupDAO;
 import me.jissee.jarsauth.data.dao.AccFileInfoDAO;
 import me.jissee.jarsauth.data.dao.AccFileInfoDAO.AccFileInfoEntry;
+import me.jissee.jarsauth.data.dao.AccGroupDAO;
+import me.jissee.jarsauth.data.model.AcceptedDetail;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;

@@ -11,14 +11,11 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.lang.reflect.Method;
-import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.function.Consumer;
-
-import static me.jissee.jarsauth.data.TimeUtil.*;
 
 public class LicenseEditorWindow extends AbstractModWindow {
     private final String title;

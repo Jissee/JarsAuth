@@ -6,9 +6,9 @@ import net.minecraft.server.MinecraftServer;
 
 import java.security.PublicKey;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
 
 import static me.jissee.jarsauth.data.TimeUtil.now;
 

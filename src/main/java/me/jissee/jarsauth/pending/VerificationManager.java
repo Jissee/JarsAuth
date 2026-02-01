@@ -3,7 +3,6 @@ package me.jissee.jarsauth.pending;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class VerificationManager {
 

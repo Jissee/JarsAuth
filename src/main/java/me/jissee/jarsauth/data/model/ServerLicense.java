@@ -2,9 +2,7 @@ package me.jissee.jarsauth.data.model;
 
 import me.jissee.jarsauth.data.service.ServerLicenseService;
 import me.jissee.jarsauth.gui.Locales;
-import org.jetbrains.annotations.NotNull;
 
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;

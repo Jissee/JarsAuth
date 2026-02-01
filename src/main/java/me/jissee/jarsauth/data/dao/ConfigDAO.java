@@ -3,7 +3,10 @@ package me.jissee.jarsauth.data.dao;
 import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.data.ConnectionProvider;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.TreeMap;
 
 public class ConfigDAO implements DAO {

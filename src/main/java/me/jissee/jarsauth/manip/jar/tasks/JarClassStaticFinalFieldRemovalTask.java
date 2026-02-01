@@ -3,7 +3,10 @@ package me.jissee.jarsauth.manip.jar.tasks;
 import me.jissee.jarsauth.manip.jar.JarEntryWrapper;
 import org.objectweb.asm.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 /**

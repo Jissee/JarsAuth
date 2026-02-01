@@ -1,12 +1,14 @@
 package me.jissee.jarsauth.manip.jar.tasks;
 
 import me.jissee.jarsauth.manip.jar.JarEntryWrapper;
-import org.objectweb.asm.*;
-
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.commons.ClassRemapper;
 import org.objectweb.asm.commons.Remapper;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 public class JarClassDuplicationTask implements Function<List<JarEntryWrapper>, List<JarEntryWrapper>> {

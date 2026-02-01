@@ -1,13 +1,11 @@
 package me.jissee.jarsauth.manip.mixin;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class MixinRefmapBuilder {
     private final Map<String, JsonElement> mappingsBuffer = new HashMap<>();

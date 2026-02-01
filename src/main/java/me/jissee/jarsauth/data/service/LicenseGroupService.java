@@ -3,7 +3,6 @@ package me.jissee.jarsauth.data.service;
 import me.jissee.jarsauth.data.ConnectionProvider;
 import me.jissee.jarsauth.data.dao.LicenseGroupDAO;
 
-import java.util.List;
 import java.util.Set;
 
 public class LicenseGroupService implements Service {

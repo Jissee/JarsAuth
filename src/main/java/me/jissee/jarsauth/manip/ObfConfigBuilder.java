@@ -1,13 +1,8 @@
 package me.jissee.jarsauth.manip;
 
-import cpw.mods.cl.ProtectionDomainHelper;
-import org.spongepowered.asm.mixin.transformer.throwables.MixinPreProcessorException;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.security.ProtectionDomain;
-import java.util.EnumMap;
 
 public class ObfConfigBuilder {
     private final String inputPath;

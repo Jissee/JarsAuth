@@ -1,7 +1,6 @@
 package me.jissee.jarsauth.data.model;
 
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public enum PeriodType {
     MONDAY(1,"label.server.license.monday"),

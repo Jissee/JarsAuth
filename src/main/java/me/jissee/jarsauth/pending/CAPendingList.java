@@ -17,7 +17,6 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Optional;
 import java.util.UUID;
 
 public class CAPendingList extends AbstractPendingList<byte[]> {

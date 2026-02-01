@@ -1,7 +1,6 @@
 package me.jissee.jarsauth.data.dao;
 
 import me.jissee.jarsauth.data.ConnectionProvider;
-import me.jissee.jarsauth.data.model.ServerLicenseInstance;
 
 import java.sql.*;
 import java.time.LocalDateTime;

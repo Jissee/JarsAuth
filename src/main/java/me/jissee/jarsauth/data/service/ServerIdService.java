@@ -2,9 +2,7 @@ package me.jissee.jarsauth.data.service;
 
 import me.jissee.jarsauth.data.ConnectionProvider;
 import me.jissee.jarsauth.data.dao.ServerIdDAO;
-import me.jissee.jarsauth.data.model.AcceptedDetail;
 
-import java.sql.Connection;
 import java.util.Optional;
 import java.util.UUID;
 

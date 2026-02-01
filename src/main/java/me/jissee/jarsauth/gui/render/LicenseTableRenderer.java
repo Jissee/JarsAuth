@@ -1,11 +1,8 @@
 package me.jissee.jarsauth.gui.render;
 
-import me.jissee.jarsauth.data.model.ServerLicense;
-
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;

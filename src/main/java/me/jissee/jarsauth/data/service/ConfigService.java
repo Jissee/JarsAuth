@@ -5,7 +5,6 @@ import me.jissee.jarsauth.data.ConnectionProvider;
 import me.jissee.jarsauth.data.dao.ConfigDAO;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 

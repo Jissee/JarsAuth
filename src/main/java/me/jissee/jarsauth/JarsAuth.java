@@ -9,7 +9,6 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spongepowered.asm.launch.MixinBootstrap;
 import org.sqlite.SQLiteJDBCLoader;
 
 import java.io.File;
