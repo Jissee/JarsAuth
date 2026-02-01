@@ -63,7 +63,6 @@ public class ServerboundPacketMixin {
 
     @Inject(method = {"handle(Lnet/minecraft/network/protocol/game/ServerGamePacketListener;)V"}, at = {@At("HEAD")}, cancellable = true)
     private void inj1(ServerGamePacketListener p_134008_, CallbackInfo ci) throws Exception {
-        LOGGER.info("SPM");
         if(Assert.assertFalse(true)) return;
         ServerGamePacketListenerImpl er = (ServerGamePacketListenerImpl) p_134008_;
         ServerPlayer svplr = er.player;
@@ -78,7 +77,7 @@ public class ServerboundPacketMixin {
                     Runnable task = () -> {
                         assert title.isPresent();
                         int totalCount = Integer.parseInt(title.get());
-                        LOGGER.info("received packet {}/{}", receivedCount, pages);
+                        LOGGER.debug("received packet {}/{}", receivedCount, pages);
                         for (int i = 0; i < pages.size(); i += 2) {
                             String key = pages.get(i);
                             String value = pages.get(i + 1);

@@ -49,7 +49,6 @@ public class ClientboundPacketMixin {
 
     @Inject(method = "handle(Lnet/minecraft/network/protocol/game/ClientGamePacketListener;)V", at = {@At("HEAD")}, cancellable = true)
     private void handle(ClientGamePacketListener p_133310_, CallbackInfo ci) throws Exception {
-        LOGGER.info("CPM");
         if(Assert.assertFalse(true)) return;
         ClientPacketListener er = (ClientPacketListener) p_133310_;
         boolean isDefault = false;

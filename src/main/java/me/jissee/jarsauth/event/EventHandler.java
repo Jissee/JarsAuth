@@ -154,6 +154,7 @@ public class EventHandler {
 
     public static void addPlayerToBeRemove(ServerPlayer player, Component reason, int delayTick){
         synchronized (kickList){
+            if(player == null) return;
             kickList.add(player);
             reasons.add(reason);
             delayTicks.add(new IntHolder(delayTick));

@@ -96,8 +96,11 @@ public class ObfConfigBuilder {
             -dontwarn java.**
             -dontwarn javax.**
             -dontwarn org.objectweb.asm.**
+            -dontwarn oshi.util.tuples.**
+            -dontwarn com.intellij.uiDesigner.**
             -dontwarn org.jetbrains.**
             -dontwarn me.jissee.jarsauth.manip.**
+            -dontwarn org.objectweb.asm.**
             """;
 
     public ObfConfigBuilder(String inputPath, String outputPath, String dictionaryPath, String mappingPath) {
