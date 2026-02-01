@@ -1,5 +1,6 @@
 package me.jissee.jarsauth.pending;
 
+import me.jissee.jarsauth.ThreadExecutor;
 import me.jissee.jarsauth.data.DataManager;
 import net.minecraft.server.MinecraftServer;
 
@@ -70,13 +71,6 @@ public abstract class AbstractPendingList<T> {
     protected final boolean clientRequired;
 
     private final Map<UUID, UserContext> users = new ConcurrentHashMap<>();
-
-    private final ScheduledExecutorService scheduler =
-            Executors.newScheduledThreadPool(2, r -> {
-                Thread t = new Thread(r);
-                t.setDaemon(true);
-                return t;
-            });
 
     protected final DataManager dataManager;
 
@@ -175,7 +169,7 @@ public abstract class AbstractPendingList<T> {
 
             scheduleTimeout(ctx);
 
-            scheduler.execute(() -> {
+            ThreadExecutor.getInstance().execute(() -> {
                 try {
                     T expected = calculateExpected(ctx.userId, ctx.randomData);
                     synchronized (ctx) {
@@ -250,10 +244,9 @@ public abstract class AbstractPendingList<T> {
 
     private void scheduleTimeout(UserContext ctx) {
         cancelTimeout(ctx);
-        ctx.timeoutTask = scheduler.schedule(
+        ctx.timeoutTask = ThreadExecutor.getInstance().schedule(
                 () -> onTimeout(ctx),
-                getTimeout(),
-                TimeUnit.SECONDS
+                getTimeout()
         );
     }
 
@@ -266,22 +259,13 @@ public abstract class AbstractPendingList<T> {
 
     private void scheduleNext(UserContext ctx, boolean immediate) {
         if (immediate) {
-            scheduler.execute(() -> startVerification(ctx));
+            ThreadExecutor.getInstance().execute(() -> startVerification(ctx));
         } else {
-            scheduler.schedule(
+            ThreadExecutor.getInstance().schedule(
                     () -> startVerification(ctx),
-                    getInterval(),
-                    TimeUnit.SECONDS
+                    getInterval()
             );
         }
     }
 
-    public Optional<PublicKey> getPublicKeyForUser(UUID uuid){
-        UserContext ctx = users.get(uuid);
-        if (ctx == null){
-            return Optional.empty();
-        }else{
-            return Optional.ofNullable(ctx.key);
-        }
-    }
 }

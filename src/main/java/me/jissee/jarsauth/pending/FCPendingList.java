@@ -10,6 +10,7 @@ import me.jissee.jarsauth.data.service.AccProfileService;
 import me.jissee.jarsauth.data.service.AuthRuleService;
 import me.jissee.jarsauth.data.service.ConfigService;
 import me.jissee.jarsauth.event.EventHandler;
+import me.jissee.jarsauth.gui.Locales;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.server.MinecraftServer;
@@ -40,11 +41,14 @@ public class FCPendingList extends AbstractPendingList<List<String>> {
             selector.setDataSource(detail);
 
             AuthRuleEntry entry = ruleService.getFlattenRuleEntry(detail);
-            entry.rules().forEach(selector::addFilter);
+            List<String> rules = entry.rules();
+            if(!rules.isEmpty()) {
+                rules.forEach(selector::addFilter);
 
-            FileList fileList = selector.getFileList();
-            String hash = fileList.hash(detail, random);
-            results.add(hash);
+                FileList fileList = selector.getFileList();
+                String hash = fileList.hash(detail, random);
+                results.add(hash);
+            }
         }
         return results;
     }
@@ -52,7 +56,7 @@ public class FCPendingList extends AbstractPendingList<List<String>> {
     @Override
     protected boolean compare(UserContext ctx, List<String> expected, List<String> actual) {
         if(expected.isEmpty()){
-            return true;
+            throw new IllegalStateException(Locales.getString("info.no.config"));
         }
         Set<String> expectedSet = new HashSet<>(expected);
         Set<String> actualSet =

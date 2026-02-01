@@ -144,9 +144,6 @@ public class AuthRuleService implements Service {
     public void saveRuleEntry(AuthRuleEntry ruleEntry) {
         dao.insertRules(ruleEntry.groupName(), ruleEntry.rules());
     }
-    public void changeRule(String groupName, String oldRule, String newRule) {
-        dao.changeRule(groupName, oldRule, newRule);
-    }
     public void removeRule(String groupName, String rule) {
         dao.removeRule(groupName, rule);
     }

@@ -2,6 +2,7 @@ package me.jissee.jarsauth.event;
 
 import me.jissee.jarsauth.JarsAuth;
 import me.jissee.jarsauth.ModCommand;
+import me.jissee.jarsauth.ThreadExecutor;
 import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.config.VolatileConfig;
 import me.jissee.jarsauth.data.DataManager;
@@ -22,6 +23,8 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import javax.crypto.IllegalBlockSizeException;
@@ -72,6 +75,11 @@ public class EventHandler {
                 }
             }
         }
+    }
+
+    @SubscribeEvent
+    public static void onServerStop(ServerStoppingEvent event){
+        ThreadExecutor.getInstance().shutdown();
     }
 
 

@@ -44,7 +44,7 @@ public class JarClassDuplicationTask implements Function<List<JarEntryWrapper>, 
     private byte[] transformClass(byte[] originalBytes,
                                   String oldName, String newName, int index) {
         ClassReader cr = new ClassReader(originalBytes);
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
 
         Remapper remapper = new Remapper() {
             @Override

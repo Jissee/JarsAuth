@@ -2,6 +2,7 @@ package me.jissee.jarsauth.mixin;
 
 import com.google.gson.*;
 import me.jissee.jarsauth.Codec;
+import me.jissee.jarsauth.ThreadExecutor;
 import me.jissee.jarsauth.data.DataManager;
 import me.jissee.jarsauth.data.FileSelector;
 import me.jissee.jarsauth.data.model.AcceptedDetail;
@@ -36,7 +37,6 @@ public class ClientboundPacketMixin {
     private static final int replaceTarget2 = -514;   // fc auth info -> send auth
     private static final int replaceTarget3 = -0114;  // ca register  -> pk / store id
     private static final int replaceTarget4 = -0514;  // ca auth info -> send auth
-    private static final int replaceTarget5 = -114514;//
     private static final Gson gson = new Gson();
     private static final Logger LOGGER = LoggerFactory.getLogger("Client Packet Handler");
     private static PublicKey publicKey;
@@ -47,6 +47,7 @@ public class ClientboundPacketMixin {
 
     @Inject(method = "handle(Lnet/minecraft/network/protocol/game/ClientGamePacketListener;)V", at = {@At("HEAD")}, cancellable = true)
     private void handle(ClientGamePacketListener p_133310_, CallbackInfo ci) throws Exception {
+        LOGGER.info("CPM");
         if(Assert.assertFalse(true)) return;
         ClientPacketListener er = (ClientPacketListener) p_133310_;
         boolean isDefault = false;
@@ -82,178 +83,168 @@ public class ClientboundPacketMixin {
             }
         }
         String playerName = Objects.requireNonNull(Minecraft.getInstance().player).getName().getString();
-        switch (flag) {
-            case replaceTarget1:
-                Thread sendArchiveThread = new Thread(()->{
-                    File defaultFile = new File("");
-                    defaultFile = defaultFile.getAbsoluteFile();
+        if(flag == replaceTarget1) {
+            Runnable sendArchiveTask = () -> {
+                File defaultFile = new File("");
+                defaultFile = defaultFile.getAbsoluteFile();
 
-                    String clientRootDir = defaultFile.getAbsolutePath();
-                    if (!clientRootDir.endsWith(File.separator)) {
-                        if(clientRootDir.endsWith(".")){
-                            clientRootDir = clientRootDir.substring(0, clientRootDir.length() - 2);
-                        }else{
-                            clientRootDir = clientRootDir + File.separator;
-                        }
+                String clientRootDir = defaultFile.getAbsolutePath();
+                if (!clientRootDir.endsWith(File.separator)) {
+                    if (clientRootDir.endsWith(".")) {
+                        clientRootDir = clientRootDir.substring(0, clientRootDir.length() - 2);
+                    } else {
+                        clientRootDir = clientRootDir + File.separator;
                     }
+                }
 
 
-                    AcceptedDetail detail = null;
-                    try{
-                        FileSelector selector = new FileSelector(clientRootDir);
-                        detail = selector.scan("");
-                    }catch (Exception e){
-                        LOGGER.error("Error while reading native files: ", e);
-                    }
-                    if(detail == null){
-                        return;
-                    }
+                AcceptedDetail detail = null;
+                try {
+                    FileSelector selector = new FileSelector(clientRootDir);
+                    detail = selector.scan("");
+                } catch (Exception e) {
+                    LOGGER.error("Error while reading native files: ", e);
+                }
+                if (detail == null) {
+                    return;
+                }
 
-                    Map<String, String> files = detail.files();
-                    List<String> folders = detail.folders();
+                Map<String, String> files = detail.files();
+                List<String> folders = detail.folders();
 
 
-                    int i = 0;
-                    List<List<String>> strPacks = new ArrayList<>();
-                    List<String> strl = new ArrayList<>();
+                int i = 0;
+                List<List<String>> strPacks = new ArrayList<>();
+                List<String> strl = new ArrayList<>();
 
-                    for(String folder : folders){
-                        folder = folder.replace('\\','/');
-                        if(i == 100){
-                            strPacks.add(strl);
-                            LOGGER.info("adding info a");
-                            i = 0;
-                            strl =  new ArrayList<>();
-                        }
-                        String key = folder;
-                        String value = "folder";
-                        strl.add(key);
-                        strl.add(value);
-                        i++;
-                    }
-                    for(String file : files.keySet()){
-                        file = file.replace('\\','/');
-                        if(i == 100){
-                            strPacks.add(strl);
-                            LOGGER.info("adding info b");
-                            i = 0;
-                            strl = new ArrayList<>();
-                        }
-                        String key = file;
-                        String value = files.get(key);
-                        if (value == null) {
-                            LOGGER.warn("Cannot access file {}", file);
-                            value = "UNKNOWN";
-                        }
-                        strl.add(key);
-                        strl.add(value);
-                        i++;
-                    }
-                    if(!strl.isEmpty()){
+                for (String folder : folders) {
+                    folder = folder.replace('\\', '/');
+                    if (i == 100) {
                         strPacks.add(strl);
-                        LOGGER.info("adding info c");
+                        LOGGER.info("adding info a");
+                        i = 0;
+                        strl = new ArrayList<>();
                     }
-                    try {
-                        int count = 0;
-                        for(List<String> pack : strPacks){
-                            count += pack.size();
-                        }
-                        count = count / 2;
-                        for (List<String> pack : strPacks) {
-                            ServerboundEditBookPacket packet =
-                                    new ServerboundEditBookPacket(-810, pack, Optional.of(String.valueOf(count)));
-                            er.send(packet);
-                        }
-                    }catch (Exception e){
-                        LOGGER.error("EXCEPTION THROWN: ", e);
+                    String key = folder;
+                    String value = "folder";
+                    strl.add(key);
+                    strl.add(value);
+                    i++;
+                }
+                for (String file : files.keySet()) {
+                    file = file.replace('\\', '/');
+                    if (i == 100) {
+                        strPacks.add(strl);
+                        LOGGER.info("adding info b");
+                        i = 0;
+                        strl = new ArrayList<>();
                     }
-                });
-                sendArchiveThread.setDaemon(true);
-                sendArchiveThread.start();
-                break;
-            case replaceTarget2:
-                String finalRandom = random;
-                PublicKey finalPubKey = serverPublicKey;
-                String finalPayload = payload;
-                Thread sendAuthThread = new Thread(()->{
-                    JsonObject jsonObject = JsonParser.parseString(finalPayload).getAsJsonObject();
-                    List<String> results = new ArrayList<>();
-                    for(String key : jsonObject.keySet()) {
-                        JsonArray jsonArray = jsonObject.get(key).getAsJsonArray();
-                        LoggerFactory.getLogger("Received Auth Profile").debug("key: {}, value: {}", key, jsonArray);
-                        FileSelector selector = new FileSelector(".");
-                        for(JsonElement element : jsonArray){
-                            String rule = element.getAsString();
-                            selector.addFilter(rule);
-                        }
-                        FileList fileList = null;
-                        try {
-                            fileList = selector.getFileList();
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                        String hash = fileList.hash("./", finalRandom);
-                        results.add(hash);
+                    String key = file;
+                    String value = files.get(key);
+                    if (value == null) {
+                        LOGGER.warn("Cannot access file {}", file);
+                        value = "UNKNOWN";
                     }
-                    List<String> resultsEnc = results.stream().map(sha256-> {
-                        try {
-                            byte[] byteSha = Codec.hexToBytes(sha256);
-                            byte[] byteShaEnc = Codec.encrypt(byteSha, finalPubKey);
-                            return Codec.bytesToHex(byteShaEnc);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    }).toList();
-
-                    ServerboundEditBookPacket packet =
-                            new ServerboundEditBookPacket(-1919, resultsEnc, Optional.empty());
-                    er.getConnection().send(packet);
-                });
-                sendAuthThread.setDaemon(true);
-                sendAuthThread.start();
-                break;
-            case replaceTarget3: // pk request/send new id
-                ClientDataService service = DataManager.getClientInstance().getService(ClientDataService.class);
-
-                if(payload.isEmpty()){//gen pk
-                    try {
-                        publicKey = Codec.getKey();
-                        String clientPublicKey = Codec.bytesToHex(publicKey.getEncoded());
+                    strl.add(key);
+                    strl.add(value);
+                    i++;
+                }
+                if (!strl.isEmpty()) {
+                    strPacks.add(strl);
+                    LOGGER.info("adding info c");
+                }
+                try {
+                    int count = 0;
+                    for (List<String> pack : strPacks) {
+                        count += pack.size();
+                    }
+                    count = count / 2;
+                    for (List<String> pack : strPacks) {
                         ServerboundEditBookPacket packet =
-                                new ServerboundEditBookPacket(-9810, List.of(clientPublicKey), Optional.empty());
-                        er.getConnection().send(packet);
+                                new ServerboundEditBookPacket(-810, pack, Optional.of(String.valueOf(count)));
+                        er.send(packet);
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("EXCEPTION THROWN: ", e);
+                }
+            };
+            ThreadExecutor.getInstance().execute(sendArchiveTask);
+        }else if (flag == replaceTarget2) {
+            String finalRandom = random;
+            PublicKey finalPubKey = serverPublicKey;
+            String finalPayload = payload;
+            Runnable sendAuthTask = () -> {
+                JsonObject jsonObject = JsonParser.parseString(finalPayload).getAsJsonObject();
+                List<String> results = new ArrayList<>();
+                for (String key : jsonObject.keySet()) {
+                    JsonArray jsonArray = jsonObject.get(key).getAsJsonArray();
+                    LoggerFactory.getLogger("Received Auth Profile").debug("key: {}, value: {}", key, jsonArray);
+                    FileSelector selector = new FileSelector(".");
+                    for (JsonElement element : jsonArray) {
+                        String rule = element.getAsString();
+                        selector.addFilter(rule);
+                    }
+                    FileList fileList = null;
+                    try {
+                        fileList = selector.getFileList();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    String hash = fileList.hash("./", finalRandom);
+                    results.add(hash);
+                }
+                List<String> resultsEnc = results.stream().map(sha256 -> {
+                    try {
+                        byte[] byteSha = Codec.hexToBytes(sha256);
+                        byte[] byteShaEnc = Codec.encrypt(byteSha, finalPubKey);
+                        return Codec.bytesToHex(byteShaEnc);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
-                }else{//new id
-                    PrivateKey privateKey = Codec.getPrivateKey(publicKey);
-                    byte[] byteIdEnd = Codec.hexToBytes(payload);
-                    byte[] byteId = Codec.decrypt(byteIdEnd, privateKey);
-                    UUID userId = Codec.bytesToUUID(byteId);
-                    UUID serverId = UUID.fromString(random);
+                }).toList();
 
-                    service.saveUserId(playerName, userId, serverId);
-                }
-                break;
-            case replaceTarget4:
-                service = DataManager.getClientInstance().getService(ClientDataService.class);
-                UUID serverId = UUID.fromString(random);
-                Optional<UUID> userId = service.getUserId(playerName, serverId);
-                if(userId.isPresent()){
-                    UUID uuid = userId.get();
-                    byte[] byteId = Codec.uuidToBytes(uuid);
-                    byte[] byteIdEnc = Codec.encrypt(byteId, serverPublicKey);
-                    String enc = Codec.bytesToHex(byteIdEnc);
+                ServerboundEditBookPacket packet =
+                        new ServerboundEditBookPacket(-1919, resultsEnc, Optional.empty());
+                er.getConnection().send(packet);
+            };
+            ThreadExecutor.getInstance().execute(sendAuthTask);
+        }else if (flag == replaceTarget3) {
+            ClientDataService service = DataManager.getClientInstance().getService(ClientDataService.class);
+
+            if (payload.isEmpty()) {//gen pk
+                try {
+                    publicKey = Codec.getKey();
+                    String clientPublicKey = Codec.bytesToHex(publicKey.getEncoded());
                     ServerboundEditBookPacket packet =
-                            new ServerboundEditBookPacket(-191, List.of(enc), Optional.empty());
+                            new ServerboundEditBookPacket(-9810, List.of(clientPublicKey), Optional.empty());
                     er.getConnection().send(packet);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
                 }
-                break;
-            case replaceTarget5:
-                break;
-            default:
-                isDefault = true;
-                break;
+            } else {//new id
+                PrivateKey privateKey = Codec.getPrivateKey(publicKey);
+                byte[] byteIdEnd = Codec.hexToBytes(payload);
+                byte[] byteId = Codec.decrypt(byteIdEnd, privateKey);
+                UUID userId = Codec.bytesToUUID(byteId);
+                UUID serverId = UUID.fromString(random);
+
+                service.saveUserId(playerName, userId, serverId);
+            }
+        }else if (flag == replaceTarget4) {
+            ClientDataService service = DataManager.getClientInstance().getService(ClientDataService.class);
+            UUID serverId = UUID.fromString(random);
+            Optional<UUID> userId = service.getUserId(playerName, serverId);
+            if (userId.isPresent()) {
+                UUID uuid = userId.get();
+                byte[] byteId = Codec.uuidToBytes(uuid);
+                byte[] byteIdEnc = Codec.encrypt(byteId, serverPublicKey);
+                String enc = Codec.bytesToHex(byteIdEnc);
+                ServerboundEditBookPacket packet =
+                        new ServerboundEditBookPacket(-191, List.of(enc), Optional.empty());
+                er.getConnection().send(packet);
+            }
+        }else{
+            isDefault = true;
         }
         if(!isDefault){
             ci.cancel();

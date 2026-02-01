@@ -27,7 +27,7 @@ public class JarClassIntegerObfuscationTask implements Function<List<JarEntryWra
             if (name.endsWith(".class")) {
                 try {
                     ClassReader cr = new ClassReader(bytes);
-                    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
+                    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
                     ClassVisitor cv = new IntegerObfuscatorClassVisitor(cw);
                     cr.accept(cv, ClassReader.EXPAND_FRAMES);
                     result.add(new JarEntryWrapper(name, cw.toByteArray()));

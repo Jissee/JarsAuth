@@ -132,7 +132,7 @@ public class AccProfileService implements Service {
             }else{
                 buffer.addFile(key, value);
             }
-            LoggerFactory.getLogger("Authinfo").info("[{}/{}] {} --> {}",buffer.getTotalCount(), totalCount, key, value);
+            LoggerFactory.getLogger("Authinfo").debug("[{}/{}] {} --> {}",buffer.getTotalCount(), totalCount, key, value);
             if(totalCount == buffer.getTotalCount()){
                 saveAcceptedDetail(buffer);
                 buffer = null;
