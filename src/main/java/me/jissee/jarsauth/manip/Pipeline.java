@@ -21,10 +21,6 @@ public class Pipeline {
 
     public static Tuple<String, File> run() throws IOException{
         File inputFile = JarsAuth.getJarFile();
-        if (inputFile.isDirectory()) {
-            //in dev
-            inputFile = new File("/Users/sun/Desktop/Minecraft/develop/jarsauth/6.0/forge/forge-1.20.1-47.4.2-mdkbkup/build/libs/jarsauth-6.0-all.jar");
-        }
         String modFileName = inputFile.getName();
 
 // 去掉 .jar 扩展名
