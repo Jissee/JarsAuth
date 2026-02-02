@@ -1217,6 +1217,7 @@ public class MainWindow extends AbstractModWindow {
         serverIdText.setEditable(false);
         serverIdText.setEnabled(true);
         serverIdText.setText("");
+        serverIdText.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "label.server.id.tip"));
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 1;
@@ -1225,6 +1226,7 @@ public class MainWindow extends AbstractModWindow {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         panel5.add(serverIdText, gbc);
         final JScrollPane scrollPane3 = new JScrollPane();
+        scrollPane3.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "label.client.id.tip"));
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 3;
@@ -1251,8 +1253,10 @@ public class MainWindow extends AbstractModWindow {
         panel7.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
         panel6.add(panel7, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         licenseScrollPane = new JScrollPane();
+        licenseScrollPane.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "label.server.license.license.tip"));
         panel7.add(licenseScrollPane, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
         licenseTable = new JTable();
+        licenseTable.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "label.server.license.instance.tip"));
         licenseScrollPane.setViewportView(licenseTable);
         final JLabel label5 = new JLabel();
         this.$$$loadLabelText$$$(label5, this.$$$getMessageFromBundle$$$("ui", "label.server.license.license"));
@@ -1292,6 +1296,7 @@ public class MainWindow extends AbstractModWindow {
         licenseRuleList.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "label.server.license.rule.tip"));
         scrollPane5.setViewportView(licenseRuleList);
         licenseInstancePane = new JScrollPane();
+        licenseInstancePane.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "label.server.license.instance.tip"));
         gbc = new GridBagConstraints();
         gbc.gridx = 3;
         gbc.gridy = 1;
@@ -1300,6 +1305,7 @@ public class MainWindow extends AbstractModWindow {
         gbc.fill = GridBagConstraints.BOTH;
         panel8.add(licenseInstancePane, gbc);
         licenseInstanceTable = new JTable();
+        licenseInstanceTable.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "label.server.license.instance.tip"));
         licenseInstancePane.setViewportView(licenseInstanceTable);
         final JLabel label7 = new JLabel();
         this.$$$loadLabelText$$$(label7, this.$$$getMessageFromBundle$$$("ui", "label.server.license.rule"));
@@ -1338,7 +1344,8 @@ public class MainWindow extends AbstractModWindow {
         panel8.add(label9, gbc);
         final JPanel panel9 = new JPanel();
         panel9.setLayout(new GridLayoutManager(6, 2, new Insets(0, 0, 0, 0), -1, -1));
-        tabbedPane1.addTab(this.$$$getMessageFromBundle$$$("ui", "tab.signature"), panel9);
+        panel9.setToolTipText("");
+        tabbedPane1.addTab(this.$$$getMessageFromBundle$$$("ui", "tab.signature"), null, panel9, this.$$$getMessageFromBundle$$$("ui", "tab.signature.tip"));
         environmentLabel = new JLabel();
         environmentLabel.setText("Label");
         panel9.add(environmentLabel, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
@@ -1346,12 +1353,12 @@ public class MainWindow extends AbstractModWindow {
         signedLabel.setText("Label");
         panel9.add(signedLabel, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         exportButton = new JButton();
-        this.$$$loadButtonText$$$(exportButton, this.$$$getMessageFromBundle$$$("ui", "info.export.signed"));
-        exportButton.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "info.export.signed.tip"));
+        this.$$$loadButtonText$$$(exportButton, this.$$$getMessageFromBundle$$$("ui", "label.export.signed"));
+        exportButton.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "label.export.signed.tip"));
         panel9.add(exportButton, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         createObfDictButton = new JButton();
-        this.$$$loadButtonText$$$(createObfDictButton, this.$$$getMessageFromBundle$$$("ui", "info.generate.obf.dict"));
-        createObfDictButton.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "info.generate.obf.dict.tip"));
+        this.$$$loadButtonText$$$(createObfDictButton, this.$$$getMessageFromBundle$$$("ui", "label.generate.obf.dict"));
+        createObfDictButton.setToolTipText(this.$$$getMessageFromBundle$$$("ui", "label.generate.obf.dict.tip"));
         panel9.add(createObfDictButton, new GridConstraints(3, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         createObfConfig = new JButton();
         this.$$$loadButtonText$$$(createObfConfig, this.$$$getMessageFromBundle$$$("ui", "info.generate.obf.config"));

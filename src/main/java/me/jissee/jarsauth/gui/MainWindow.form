@@ -145,6 +145,7 @@
                   <editable value="false"/>
                   <enabled value="true"/>
                   <text value=""/>
+                  <toolTipText resource-bundle="ui" key="label.server.id.tip"/>
                 </properties>
               </component>
               <scrollpane id="5322f">
@@ -152,7 +153,9 @@
                   <grid row="3" column="0" row-span="1" col-span="2" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
                   <gridbag weightx="1.0" weighty="1.0"/>
                 </constraints>
-                <properties/>
+                <properties>
+                  <toolTipText resource-bundle="ui" key="label.client.id.tip"/>
+                </properties>
                 <border type="none"/>
                 <children>
                   <component id="587ea" class="javax.swing.JTable" binding="userIdTable">
@@ -198,12 +201,16 @@
                     <constraints>
                       <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
                     </constraints>
-                    <properties/>
+                    <properties>
+                      <toolTipText resource-bundle="ui" key="label.server.license.license.tip"/>
+                    </properties>
                     <border type="none"/>
                     <children>
                       <component id="aaed" class="javax.swing.JTable" binding="licenseTable">
                         <constraints/>
-                        <properties/>
+                        <properties>
+                          <toolTipText resource-bundle="ui" key="label.server.license.instance.tip"/>
+                        </properties>
                       </component>
                     </children>
                   </scrollpane>
@@ -272,14 +279,18 @@
                       <grid row="1" column="3" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
                       <gridbag weightx="2.0" weighty="1.0"/>
                     </constraints>
-                    <properties/>
+                    <properties>
+                      <toolTipText resource-bundle="ui" key="label.server.license.instance.tip"/>
+                    </properties>
                     <border type="none">
                       <title-color color="-2104859"/>
                     </border>
                     <children>
                       <component id="c403c" class="javax.swing.JTable" binding="licenseInstanceTable">
                         <constraints/>
-                        <properties/>
+                        <properties>
+                          <toolTipText resource-bundle="ui" key="label.server.license.instance.tip"/>
+                        </properties>
                       </component>
                     </children>
                   </scrollpane>
@@ -335,9 +346,13 @@
           <grid id="837e5" layout-manager="GridLayoutManager" row-count="6" column-count="2" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
             <margin top="0" left="0" bottom="0" right="0"/>
             <constraints>
-              <tabbedpane title-resource-bundle="ui" title-key="tab.signature"/>
+              <tabbedpane title-resource-bundle="ui" title-key="tab.signature">
+                <tooltip resource-bundle="ui" key="tab.signature.tip"/>
+              </tabbedpane>
             </constraints>
-            <properties/>
+            <properties>
+              <toolTipText value=""/>
+            </properties>
             <border type="none"/>
             <children>
               <component id="516bc" class="javax.swing.JLabel" binding="environmentLabel">
@@ -361,8 +376,8 @@
                   <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
                 </constraints>
                 <properties>
-                  <text resource-bundle="ui" key="info.export.signed"/>
-                  <toolTipText resource-bundle="ui" key="info.export.signed.tip"/>
+                  <text resource-bundle="ui" key="label.export.signed"/>
+                  <toolTipText resource-bundle="ui" key="label.export.signed.tip"/>
                 </properties>
               </component>
               <component id="4edba" class="javax.swing.JButton" binding="createObfDictButton">
@@ -370,8 +385,8 @@
                   <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
                 </constraints>
                 <properties>
-                  <text resource-bundle="ui" key="info.generate.obf.dict"/>
-                  <toolTipText resource-bundle="ui" key="info.generate.obf.dict.tip"/>
+                  <text resource-bundle="ui" key="label.generate.obf.dict"/>
+                  <toolTipText resource-bundle="ui" key="label.generate.obf.dict.tip"/>
                 </properties>
               </component>
               <component id="ddcb" class="javax.swing.JButton" binding="createObfConfig">
