@@ -26,7 +26,7 @@ public class JarsAuth {
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
-        if(FMLLoader.getDist() == Dist.CLIENT) {
+        if(!DistChecker.isDedicatedServer()) {
             DataManager.getClientInstance();
         }else{
             DataManager.getServerInstance();

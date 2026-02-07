@@ -22,6 +22,12 @@ public class ThreadExecutor {
                 cpuCores,
                 0L, TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<>(cpuCores * 2),
+                r -> {
+                    Thread t = new Thread(r);
+                    t.setDaemon(true);
+                    t.setName("cpu-executor-" + t.getId());
+                    return t;
+                },
                 new ThreadPoolExecutor.CallerRunsPolicy()
         );
 

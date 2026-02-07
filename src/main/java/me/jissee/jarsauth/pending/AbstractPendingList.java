@@ -95,6 +95,7 @@ public abstract class AbstractPendingList<T> {
 
         boolean inProgress;
         boolean finished;
+        boolean canceled;
 
         ScheduledFuture<?> timeoutTask;
 
@@ -174,6 +175,7 @@ public abstract class AbstractPendingList<T> {
                 cancelTimeout(ctx);
                 ctx.inProgress = false;
                 ctx.finished = true;
+                ctx.canceled = true;
             }
         }
     }
@@ -201,7 +203,7 @@ public abstract class AbstractPendingList<T> {
 
     private void startVerification(UserContext ctx) {
         synchronized (ctx) {
-            if (ctx.inProgress) return;
+            if (ctx.inProgress || ctx.canceled) return;
 
             ctx.inProgress = true;
             ctx.finished = false;
@@ -268,6 +270,7 @@ public abstract class AbstractPendingList<T> {
     private void onTimeout(UserContext ctx) {
         synchronized (ctx) {
             if (!ctx.inProgress || ctx.finished) return;
+            if (ctx.canceled) return;
             fail(ctx, FailureType.TIMEOUT, null);
         }
     }
@@ -307,6 +310,7 @@ public abstract class AbstractPendingList<T> {
     }
 
     private void scheduleNext(UserContext ctx, boolean immediate) {
+        if (ctx.canceled) return;
         if (immediate) {
             ThreadExecutor.getInstance().execute(() -> startVerification(ctx));
         } else {
