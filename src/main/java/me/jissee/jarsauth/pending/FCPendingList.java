@@ -9,7 +9,7 @@ import me.jissee.jarsauth.data.model.FileList;
 import me.jissee.jarsauth.data.service.AccProfileService;
 import me.jissee.jarsauth.data.service.AuthRuleService;
 import me.jissee.jarsauth.data.service.ConfigService;
-import me.jissee.jarsauth.event.EventHandler;
+import me.jissee.jarsauth.DisconnectionHandler;
 import me.jissee.jarsauth.gui.Locales;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
@@ -108,7 +108,7 @@ public class FCPendingList extends AbstractPendingList<List<String>> {
             reasonComponent = Component.translatable(reason);
         }
         ServerPlayer player = server.getPlayerList().getPlayer(userId);
-        EventHandler.addPlayerToBeRemove(player, reasonComponent, 0);
+        DisconnectionHandler.addPlayerToBeRemove(player, reasonComponent, 0);
     }
 
     @Override

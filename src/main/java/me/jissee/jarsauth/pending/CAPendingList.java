@@ -5,7 +5,7 @@ import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.data.service.ConfigService;
 import me.jissee.jarsauth.data.service.ServerIdService;
 import me.jissee.jarsauth.data.service.UserIdServerService;
-import me.jissee.jarsauth.event.EventHandler;
+import me.jissee.jarsauth.DisconnectionHandler;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.server.MinecraftServer;
@@ -108,7 +108,7 @@ public class CAPendingList extends AbstractPendingList<byte[]> {
             reasonComponent = Component.translatable(reason);
         }
         ServerPlayer player = server.getPlayerList().getPlayer(userId);
-        EventHandler.addPlayerToBeRemove(player, reasonComponent, 0);
+        DisconnectionHandler.addPlayerToBeRemove(player, reasonComponent, 0);
     }
 
     @Override

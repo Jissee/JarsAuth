@@ -1,5 +1,6 @@
 package me.jissee.jarsauth.mixin;
 
+import me.jissee.jarsauth.ThreadExecutor;
 import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.data.DataManager;
 import me.jissee.jarsauth.data.service.ConfigService;
@@ -28,7 +29,9 @@ public class ServerGUIMixin {
 
         JButton button = new JButton();
         button.addActionListener(event -> {
-            JarsAuthGui.main(new String[0]);
+            ThreadExecutor.getInstance().execute(() -> {
+                JarsAuthGui.main(new String[0]);
+            });
         });
         button.setSize(50,50);
         button.setText(Locales.getString("label.button.data"));

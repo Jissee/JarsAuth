@@ -14,7 +14,8 @@ import me.jissee.jarsauth.data.DataManager;
 import me.jissee.jarsauth.data.service.AccProfileService;
 import me.jissee.jarsauth.data.service.ServerIdService;
 import me.jissee.jarsauth.data.service.UserIdServerService;
-import me.jissee.jarsauth.event.EventHandler;
+import me.jissee.jarsauth.DisconnectionHandler;
+import me.jissee.jarsauth.pending.AbstractPendingList;
 import me.jissee.jarsauth.pending.CAPendingList;
 import me.jissee.jarsauth.pending.FCPendingList;
 import me.jissee.jarsauth.wrap.Assert;
@@ -70,7 +71,7 @@ public class ServerboundPacketMixin {
         boolean isDefault = false;
         if(server instanceof DedicatedServer){
             if(this.slot == replaceTarget1) {
-                FCPendingList pending = EventHandler.getPendingList(FCPendingList.class);
+                FCPendingList pending = AbstractPendingList.get(FCPendingList.class);
                 pending.onVerificationResponse(svplr.getUUID(), pages);
             }else if(this.slot == replaceTarget2) {
                 if (VolatileConfig.getInstance().ifThisVariableIsTrueThenTheServerIsInRecordingModeOtherwiseTheServerIsInAuthenticatingMode().get()) {
@@ -83,7 +84,7 @@ public class ServerboundPacketMixin {
                             String value = pages.get(i + 1);
                             AccProfileService service = DataManager.getServerInstance().getService(AccProfileService.class);
                             if (service.buffer(key, value, totalCount)) {
-                                EventHandler.addPlayerToBeRemove(svplr, Component.translatable("text.disconn.recorded"), 0);
+                                DisconnectionHandler.addPlayerToBeRemove(svplr, Component.translatable("text.disconn.recorded"), 0);
                                 receivedCount = 0;
                             }
                         }
@@ -92,7 +93,7 @@ public class ServerboundPacketMixin {
                     ci.cancel();
                 }
             }else if(this.slot == replaceTarget3) {
-                CAPendingList pendingList = EventHandler.getPendingList(CAPendingList.class);
+                CAPendingList pendingList = AbstractPendingList.get(CAPendingList.class);
                 if (!pages.isEmpty()) {
                     String uuid = pages.get(0);
                     pendingList.onVerificationResponse(svplr.getUUID(), Codec.hexToBytes(uuid));
@@ -127,7 +128,7 @@ public class ServerboundPacketMixin {
                 if (!success) {
                     reason = Component.translatable("text.disconn.ca.error");
                 }
-                EventHandler.addPlayerToBeRemove(svplr, reason, 0);
+                DisconnectionHandler.addPlayerToBeRemove(svplr, reason, 0);
             }else{
                 isDefault = true;
             }

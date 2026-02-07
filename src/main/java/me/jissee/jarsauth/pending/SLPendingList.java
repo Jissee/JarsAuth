@@ -3,7 +3,7 @@ package me.jissee.jarsauth.pending;
 import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.data.service.ConfigService;
 import me.jissee.jarsauth.data.service.ServerLicenseService;
-import me.jissee.jarsauth.event.EventHandler;
+import me.jissee.jarsauth.DisconnectionHandler;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -53,7 +53,7 @@ public class SLPendingList extends AbstractPendingList<String> {
             reasonComponent = Component.translatable(reason);
         }
         ServerPlayer player = server.getPlayerList().getPlayer(userId);
-        EventHandler.addPlayerToBeRemove(player, reasonComponent, 0);
+        DisconnectionHandler.addPlayerToBeRemove(player, reasonComponent, 0);
     }
 
     @Override

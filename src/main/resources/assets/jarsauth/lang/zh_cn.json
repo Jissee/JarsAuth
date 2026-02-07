@@ -4,7 +4,7 @@
   "text.server.only": "仅允许在服务端控制台执行此命令",
   "text.disconn.relative": "可疑的相对路径检查",
   "text.disconn.recording": "服务器正在记录客户端信息，暂未开放",
-  "text.disconn.recorded": "客户端信息已保存",
+  "text.disconn.recorded": "客户端信息已保存\n请修改客户端文件再次记录新的客户端消息\n或关闭记录模式",
   "text.disconn.first.time": "由于这是你的初次登录，在向服务器注册后自动断开链接。\n（这不是错误，你可以立刻重新连接）",
 
   "fc.mismatch": "文件校验失败",

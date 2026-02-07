@@ -1,7 +1,11 @@
 package me.jissee.jarsauth;
 
 import com.mojang.brigadier.CommandDispatcher;
+import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.config.VolatileConfig;
+import me.jissee.jarsauth.data.DataManager;
+import me.jissee.jarsauth.data.service.ConfigService;
+import me.jissee.jarsauth.gui.Locales;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraftforge.api.distmarker.Dist;
@@ -18,6 +22,7 @@ public class ModCommand {
                 Commands.literal("jarsauth").requires(c -> FMLLoader.getDist() == Dist.DEDICATED_SERVER && c.hasPermission(4))
                         .then(
                                 Commands.literal("record")
+                                        .requires(c -> ensureFCEnabled())
                                         .executes((ctx)->{
                                             boolean enabled = VolatileConfig.getInstance().ifThisVariableIsTrueThenTheServerIsInRecordingModeOtherwiseTheServerIsInAuthenticatingMode().get();
                                             LOGGER.info("Record mode is {}", enabled ? "on" : "off");
@@ -44,5 +49,16 @@ public class ModCommand {
 
                         )
         );
+    }
+
+    public static boolean ensureFCEnabled(){
+        ConfigService service = DataManager.getServerInstance().getService(ConfigService.class);
+        long enabled = service.getValue(ConfigKey.FILE_CHECKSUM_ENABLED);
+        if(enabled == 0) {
+            LOGGER.info(Locales.getString("info.record.unavailable"));
+            return false;
+        }else{
+            return true;
+        }
     }
 }

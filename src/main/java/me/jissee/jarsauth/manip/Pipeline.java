@@ -109,8 +109,8 @@ public class Pipeline {
         };
         Set<Integer> replaceTargetValues = new HashSet<>(
                 Arrays.stream(replaceTarget)
-                .boxed()
-                .toList()
+                        .boxed()
+                        .toList()
         );
         Map<Integer, Integer> replaceMapping = new HashMap<>();
 
@@ -128,7 +128,7 @@ public class Pipeline {
         try(JarExecutor replaceNumExecutor = new JarExecutor(inputFile)){
             JarClassNumModificationTask task = new JarClassNumModificationTask();
             task.addTarget("me/jissee/jarsauth/mixin/*")
-                .addTarget("me/jissee/jarsauth/pending/*")
+                    .addTarget("me/jissee/jarsauth/pending/*")
                     .addTarget("me/jissee/jarsauth/event/*");
 
             for(Integer oldValue : replaceTarget) {
@@ -152,7 +152,7 @@ public class Pipeline {
             }
             expansionExecutor.defineTask(new JarClassNumModificationTask().addTarget("me/jissee/jarsauth/dummy/*").addReplace(1, 0));
 
-            RandomStringGenerator generator = new RandomStringGenerator(COPY_NUM * 6, 20);
+            RandomStringGenerator generator = new RandomStringGenerator(COPY_NUM * 20, 20);
             List<String> nameCandidate = generator.toList();
             StringBuilder expMap = new StringBuilder();
             List<String> realNamesCommon = new ArrayList<>();
@@ -165,7 +165,9 @@ public class Pipeline {
                 expMap.append(mixinClass).append(" -> ").append(obfName).append("\n");
 
                 JarClassMotionTask task = new JarClassMotionTask().add("me/jissee/jarsauth/mixin/" + mixinClass, "me/jissee/jarsauth/mixin/" + obfName);
-                refmapBuilder.addObf("me/jissee/jarsauth/mixin/" + mixinClass, "me/jissee/jarsauth/mixin/" + obfName);
+                if(refmapBuilder != null) {
+                    refmapBuilder.addObf("me/jissee/jarsauth/mixin/" + mixinClass, "me/jissee/jarsauth/mixin/" + obfName);
+                }
                 expansionExecutor.defineTask(task);
             }
             for(String mixinClass : originalClientMixinClassNames) {
@@ -175,7 +177,9 @@ public class Pipeline {
                 expMap.append(mixinClass).append(" -> ").append(obfName).append("\n");
 
                 JarClassMotionTask task = new JarClassMotionTask().add("me/jissee/jarsauth/mixin/" + mixinClass, "me/jissee/jarsauth/mixin/" + obfName);
-                refmapBuilder.addObf("me/jissee/jarsauth/mixin/" + mixinClass, "me/jissee/jarsauth/mixin/" + obfName);
+                if(refmapBuilder != null) {
+                    refmapBuilder.addObf("me/jissee/jarsauth/mixin/" + mixinClass, "me/jissee/jarsauth/mixin/" + obfName);
+                }
                 expansionExecutor.defineTask(task);
             }
 
@@ -233,7 +237,9 @@ public class Pipeline {
                                 "me/jissee/jarsauth/mixin/" + obfName
                         )
                 );
-                refmapBuilder.addObf("me/jissee/jarsauth/mixin/" + reverseMap.get(i), "me/jissee/jarsauth/mixin/" + obfName);
+                if(refmapBuilder != null) {
+                    refmapBuilder.addObf("me/jissee/jarsauth/mixin/" + reverseMap.get(i), "me/jissee/jarsauth/mixin/" + obfName);
+                }
             }
             for(int i = commonIndex; i < clientIndex; i++) {
                 String obfName = nameCandidate.get(0);
@@ -245,7 +251,9 @@ public class Pipeline {
                                 "me/jissee/jarsauth/mixin/" + obfName
                         )
                 );
-                refmapBuilder.addObf("me/jissee/jarsauth/mixin/" + reverseMap.get(i), "me/jissee/jarsauth/mixin/" + obfName);
+                if(refmapBuilder != null) {
+                    refmapBuilder.addObf("me/jissee/jarsauth/mixin/" + reverseMap.get(i), "me/jissee/jarsauth/mixin/" + obfName);
+                }
             }
 
 
@@ -305,7 +313,9 @@ public class Pipeline {
             configBuilder.addClientAll(realNamesClient);
             configBuilder.addClientAll(usedObfNamesClient);
             expansionExecutor.defineTask(new JarFileAdditionTask("jarsauth.mixins.json", JarFileAdditionTask.supplierWrap(()->configBuilder.toString())));
-            expansionExecutor.defineTask(new JarFileAdditionTask("jarsauth.refmap.json", JarFileAdditionTask.supplierWrap(()->refmapBuilder.toStringObf())));
+            if(refmapBuilder != null) {
+                expansionExecutor.defineTask(new JarFileAdditionTask("jarsauth.refmap.json", JarFileAdditionTask.supplierWrap(()->refmapBuilder.toStringObf())));
+            }
             expansionExecutor.execute();
             expansionExecutor.export(signedExpandedFile);
             exportInfo.append(String.format(Locales.getString("info.exported.signed.expanded"), signedExpandedFile.getAbsolutePath())).append('\n');

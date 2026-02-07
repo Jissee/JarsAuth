@@ -1,7 +1,6 @@
 package me.jissee.jarsauth;
 
 import me.jissee.jarsauth.data.DataManager;
-import me.jissee.jarsauth.event.EventHandler;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
@@ -33,8 +32,6 @@ public class JarsAuth {
         }else{
             DataManager.getServerInstance();
         }
-        MinecraftForge.EVENT_BUS.register(EventHandler.class);
-        //edit
     }
 
     public static File getJarFile() {

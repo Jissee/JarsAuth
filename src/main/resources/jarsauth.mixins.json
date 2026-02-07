@@ -8,6 +8,9 @@
     "defaultRequire": 1
   },
   "mixins": [
+    "CommandMixin",
+    "MinecraftServerMixin",
+    "PlayerListMixin",
     "ServerboundPacketMixin",
     "ServerGUIMixin"
   ],

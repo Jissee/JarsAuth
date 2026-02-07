@@ -1,19 +1,68 @@
 package me.jissee.jarsauth.pending;
 
+import me.jissee.jarsauth.JarsAuth;
 import me.jissee.jarsauth.ThreadExecutor;
+import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.data.DataManager;
+import me.jissee.jarsauth.data.service.ConfigService;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.dedicated.DedicatedServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.PublicKey;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
+import java.util.function.Consumer;
 
 import static me.jissee.jarsauth.data.TimeUtil.now;
 
 public abstract class AbstractPendingList<T> {
+    private static final Map<Class<? extends AbstractPendingList<?>>, AbstractPendingList<?>> pendingLists = new ConcurrentHashMap<>();
+    public static final Logger LOGGER = LoggerFactory.getLogger("PendingList");
+    public static void init(MinecraftServer server){
+        if(server instanceof DedicatedServer){
+            DataManager dataManager = DataManager.getServerInstance();
+            ConfigService configService = dataManager.getService(ConfigService.class);
+            long fce = configService.getValue(ConfigKey.FILE_CHECKSUM_ENABLED);
+            long cae = configService.getValue(ConfigKey.CLIENT_AUTH_ENABLED);
+            long sle = configService.getValue(ConfigKey.SERVER_LICENSE_ENABLED);
+            if(fce != 0){
+                pendingLists.put(FCPendingList.class, new FCPendingList(server));
+            }
+            if(cae != 0){
+                pendingLists.put(CAPendingList.class, new CAPendingList(server));
+            }
+            if(sle != 0){
+                pendingLists.put(SLPendingList.class, new SLPendingList(server));
+            }
+            File jar = JarsAuth.getJarFile();
 
+            Path dest = Path.of("./" + jar.getName());
+
+            if(jar.isFile() && jar.exists() && !Files.exists(dest)){
+                try {
+                    Files.copy(jar.toPath(), dest);
+                } catch (IOException e) {
+                    LOGGER.error("Cannot copy jar file", e);
+                }
+            }
+        }
+    }
+    @SuppressWarnings("unchecked")
+    public static <T extends AbstractPendingList<?>> T get(Class<T> clazz){
+        return (T) pendingLists.get(clazz);
+    }
+    @SuppressWarnings("unchecked")
+    public static <T extends AbstractPendingList<?>> void forEach(Consumer<T> consumer){
+        pendingLists.values().forEach(list -> consumer.accept((T) list));
+    }
     /* ================= 失败类型 ================= */
 
     public enum FailureType {
