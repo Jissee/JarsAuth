@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
 
+import static me.jissee.jarsauth.JarCopyTool.getJarFile;
+
 public class Pipeline {
     private static final int COPY_NUM = 79;
     private static final int STATIC_COUNT = 5;
@@ -20,7 +22,7 @@ public class Pipeline {
     private static MixinRefmapBuilder refmapBuilder;
 
     public static Tuple<String, File> run() throws IOException{
-        File inputFile = JarsAuth.getJarFile();
+        File inputFile = getJarFile();
         String modFileName = inputFile.getName();
 
 // 去掉 .jar 扩展名

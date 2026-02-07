@@ -10,7 +10,8 @@ import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
-import static me.jissee.jarsauth.JarsAuth.getJarFile;
+import static me.jissee.jarsauth.JarCopyTool.getJarFile;
+
 
 public class Bootstrap {
     public static void main(String[] args) throws FileNotFoundException {

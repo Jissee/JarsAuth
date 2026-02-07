@@ -21,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.function.Consumer;
 
+import static me.jissee.jarsauth.JarCopyTool.getJarFile;
 import static me.jissee.jarsauth.data.TimeUtil.now;
 
 public abstract class AbstractPendingList<T> {
@@ -42,7 +43,7 @@ public abstract class AbstractPendingList<T> {
             if(sle != 0){
                 pendingLists.put(SLPendingList.class, new SLPendingList(server));
             }
-            File jar = JarsAuth.getJarFile();
+            File jar = getJarFile();
 
             Path dest = Path.of("./" + jar.getName());
 

@@ -83,7 +83,7 @@ public class ClientboundPacketMixin {
                 payload = player;
             }
         }
-        String playerName = Objects.requireNonNull(Minecraft.getInstance().player).getName().getString();
+        String playerName = er.getLocalGameProfile().getName();;
         if(flag == replaceTarget1) {
             Runnable sendArchiveTask = () -> {
                 File defaultFile = new File("");
