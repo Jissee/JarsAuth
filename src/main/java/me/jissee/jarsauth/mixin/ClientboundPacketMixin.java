@@ -9,7 +9,6 @@ import me.jissee.jarsauth.data.model.AcceptedDetail;
 import me.jissee.jarsauth.data.model.FileList;
 import me.jissee.jarsauth.data.service.ClientDataService;
 import me.jissee.jarsauth.wrap.Assert;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;

@@ -11,6 +11,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 import static me.jissee.jarsauth.JarCopyTool.getJarFile;
+import static me.jissee.jarsauth.PlatformChecker.isFabric;
 
 
 public class Bootstrap {
@@ -39,7 +40,7 @@ public class Bootstrap {
                 JarEntry entry = entries.nextElement();
                 String name = entry.getName();
                 // 判断是否在指定目录下且是JAR
-                if (name.startsWith("META-INF/jarjar") && name.endsWith(".jar")) {
+                if (name.startsWith(isFabric ? "META-INF/jarjar" : "META-INF/jars") && name.endsWith(".jar")) {
                     dependencies.add(entry);
                 }
             }

@@ -17,7 +17,7 @@ public class ModCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
-                Commands.literal("jarsauth").requires(c -> DistChecker.isDedicatedServer() && c.hasPermission(4))
+                Commands.literal("jarsauth").requires(c -> PlatformChecker.isDedicatedServer() && c.hasPermission(4))
                         .then(
                                 Commands.literal("record")
                                         .requires(c -> ensureFCEnabled())

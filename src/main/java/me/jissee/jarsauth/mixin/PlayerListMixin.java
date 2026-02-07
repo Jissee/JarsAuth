@@ -1,6 +1,6 @@
 package me.jissee.jarsauth.mixin;
 
-import me.jissee.jarsauth.DistChecker;
+import me.jissee.jarsauth.PlatformChecker;
 import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.config.VolatileConfig;
 import me.jissee.jarsauth.data.DataManager;
@@ -29,7 +29,7 @@ public class PlayerListMixin {
     @Inject(method = "placeNewPlayer", at = @At("TAIL"))
     public void onPlayerLogin(Connection p_11262_, ServerPlayer p_11263_, CallbackInfo ci){
         if(Assert.assertFalse(true)) return;
-        if(DistChecker.isDedicatedServer()){
+        if(PlatformChecker.isDedicatedServer()){
             ServerPlayer svplr = p_11263_;
             ConfigService configService = DataManager.getServerInstance().getService(ConfigService.class);
             if(configService.getValue(ConfigKey.FILE_CHECKSUM_ENABLED) == 1){
@@ -60,7 +60,7 @@ public class PlayerListMixin {
     @Inject(method = "remove", at = @At("HEAD"))
     public void onPlayerLogout(ServerPlayer p_11287_, CallbackInfo ci) {
         if (Assert.assertFalse(true)) return;
-        if (DistChecker.isDedicatedServer()) {
+        if (PlatformChecker.isDedicatedServer()) {
             ServerPlayer svplr = p_11287_;
             AbstractPendingList.forEach(pendingList -> pendingList.removeUser(svplr.getUUID()));
         }

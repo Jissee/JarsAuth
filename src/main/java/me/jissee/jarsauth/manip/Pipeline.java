@@ -1,6 +1,5 @@
 package me.jissee.jarsauth.manip;
 
-import me.jissee.jarsauth.JarsAuth;
 import me.jissee.jarsauth.gui.Locales;
 import me.jissee.jarsauth.manip.jar.JarExecutor;
 import me.jissee.jarsauth.manip.jar.tasks.*;

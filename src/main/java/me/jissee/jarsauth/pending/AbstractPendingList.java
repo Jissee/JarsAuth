@@ -1,6 +1,5 @@
 package me.jissee.jarsauth.pending;
 
-import me.jissee.jarsauth.JarsAuth;
 import me.jissee.jarsauth.ThreadExecutor;
 import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.data.DataManager;

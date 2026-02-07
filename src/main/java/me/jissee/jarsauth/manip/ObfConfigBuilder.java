@@ -4,12 +4,13 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
+import static me.jissee.jarsauth.PlatformChecker.isFabric;
+
 public class ObfConfigBuilder {
     private final String inputPath;
     private final String outputPath;
     private final String dictionaryPath;
     private final String mappingPath;
-    private static final boolean isFabric = false;
 
     private static final String config =
             """

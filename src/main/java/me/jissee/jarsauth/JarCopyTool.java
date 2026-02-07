@@ -6,7 +6,7 @@ import java.security.CodeSource;
 
 public class JarCopyTool {
     public static File getJarFile() {
-        CodeSource codeSource = JarsAuth.class.getProtectionDomain().getCodeSource();
+        CodeSource codeSource = JarCopyTool.class.getProtectionDomain().getCodeSource();
         if (codeSource != null) {
             try {
                 String path = codeSource.getLocation().toURI().getPath();

@@ -1,8 +1,8 @@
 package me.jissee.jarsauth.mixin;
 
 import com.mojang.brigadier.CommandDispatcher;
-import me.jissee.jarsauth.DistChecker;
 import me.jissee.jarsauth.ModCommand;
+import me.jissee.jarsauth.PlatformChecker;
 import me.jissee.jarsauth.wrap.Assert;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
@@ -21,7 +21,7 @@ public class CommandMixin {
     @Inject(method = "<init>", at = @At("RETURN"))
     private void onConstruct(Commands.CommandSelection p_230943_, CommandBuildContext p_230944_, CallbackInfo ci){
         if(Assert.assertFalse(true)) return;
-        if(DistChecker.isDedicatedServer()){
+        if(PlatformChecker.isDedicatedServer()){
             ModCommand.register(this.dispatcher);
         }
     }
