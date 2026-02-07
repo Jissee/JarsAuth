@@ -1,9 +1,9 @@
 package me.jissee.jarsauth.pending;
 
+import me.jissee.jarsauth.DisconnectionHandler;
 import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.data.service.ConfigService;
 import me.jissee.jarsauth.data.service.ServerLicenseService;
-import me.jissee.jarsauth.DisconnectionHandler;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;

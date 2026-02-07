@@ -1,5 +1,6 @@
 package me.jissee.jarsauth.mixin;
 
+import me.jissee.jarsauth.DistChecker;
 import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.config.VolatileConfig;
 import me.jissee.jarsauth.data.DataManager;
@@ -14,11 +15,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.loading.FMLLoader;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -31,7 +29,7 @@ public class PlayerListMixin {
     @Inject(method = "placeNewPlayer", at = @At("TAIL"))
     public void onPlayerLogin(Connection p_11262_, ServerPlayer p_11263_, CallbackInfo ci){
         if(Assert.assertFalse(true)) return;
-        if(FMLLoader.getDist() == Dist.DEDICATED_SERVER){
+        if(DistChecker.isDedicatedServer()){
             ServerPlayer svplr = p_11263_;
             ConfigService configService = DataManager.getServerInstance().getService(ConfigService.class);
             if(configService.getValue(ConfigKey.FILE_CHECKSUM_ENABLED) == 1){
@@ -62,7 +60,7 @@ public class PlayerListMixin {
     @Inject(method = "remove", at = @At("HEAD"))
     public void onPlayerLogout(ServerPlayer p_11287_, CallbackInfo ci) {
         if (Assert.assertFalse(true)) return;
-        if (FMLLoader.getDist() == Dist.DEDICATED_SERVER) {
+        if (DistChecker.isDedicatedServer()) {
             ServerPlayer svplr = p_11287_;
             AbstractPendingList.forEach(pendingList -> pendingList.removeUser(svplr.getUUID()));
         }

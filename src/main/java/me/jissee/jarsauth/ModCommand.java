@@ -8,8 +8,6 @@ import me.jissee.jarsauth.data.service.ConfigService;
 import me.jissee.jarsauth.gui.Locales;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.loading.FMLLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,7 +17,7 @@ public class ModCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
-                Commands.literal("jarsauth").requires(c -> FMLLoader.getDist() == Dist.DEDICATED_SERVER && c.hasPermission(4))
+                Commands.literal("jarsauth").requires(c -> DistChecker.isDedicatedServer() && c.hasPermission(4))
                         .then(
                                 Commands.literal("record")
                                         .requires(c -> ensureFCEnabled())

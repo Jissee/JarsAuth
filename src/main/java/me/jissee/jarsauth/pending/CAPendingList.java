@@ -1,11 +1,11 @@
 package me.jissee.jarsauth.pending;
 
 import me.jissee.jarsauth.Codec;
+import me.jissee.jarsauth.DisconnectionHandler;
 import me.jissee.jarsauth.config.ConfigKey;
 import me.jissee.jarsauth.data.service.ConfigService;
 import me.jissee.jarsauth.data.service.ServerIdService;
 import me.jissee.jarsauth.data.service.UserIdServerService;
-import me.jissee.jarsauth.DisconnectionHandler;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.server.MinecraftServer;
