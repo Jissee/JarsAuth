@@ -9,8 +9,9 @@ public class ObfConfigBuilder {
     private final String outputPath;
     private final String dictionaryPath;
     private final String mappingPath;
+    private static final boolean isFabric = false;
 
-    private final String config =
+    private static final String config =
             """
             -injars %i
             -outjars %o
@@ -42,6 +43,8 @@ public class ObfConfigBuilder {
                 <fields>;
                 <methods>;
             }
+            
+            %fabric
             
             -keep class me.jissee.jarsauth.wrap.**{
                 <methods>;
@@ -103,6 +106,13 @@ public class ObfConfigBuilder {
             -dontwarn org.objectweb.asm.**
             """;
 
+    private static final String fabricStr =
+            """
+            -keep class me.jissee.jarsauth.JarsAuth{
+                *;
+            }
+            """;
+
     public ObfConfigBuilder(String inputPath, String outputPath, String dictionaryPath, String mappingPath) {
         this.inputPath = inputPath;
         this.outputPath = outputPath;
@@ -117,6 +127,11 @@ public class ObfConfigBuilder {
                 .replace("%o", outputPath)
                 .replace("%m", mappingPath)
                 .replace("%d", dictionaryPath);
+        if(isFabric){
+            resolved = resolved.replace("%fabric", fabricStr);
+        }else{
+            resolved = resolved.replace("%fabric", "");
+        }
         // 写出文件
         try (FileWriter writer = new FileWriter(file, false)) {
             writer.write(resolved);
